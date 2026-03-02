@@ -166,6 +166,83 @@ ML-DSA implements rejection sampling requiring iterative signature generation wi
 	\end{tabular}
 \end{table}
 
+\subsection{Algorithm Complexity Analysis}\label{sec:complexity}
+
+The computational cost of ML-DSA is governed by operations over the polynomial ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$ with $q = 8{,}380{,}417$. Let $n = 256$ denote the polynomial degree, and let $(k, \ell)$ denote the matrix dimensions for a given parameter set. The following analysis derives operation counts and asymptotic complexities for each algorithmic component based on FIPS 204~\cite{NIST-FIPS-204}. To distinguish NIST-standardized procedures from paper-specific routines, all standard references are denoted as \emph{FIPS 204, Algorithm $x$}.
+
+\subsubsection{Number Theoretic Transform}
+
+The NTT converts polynomial multiplication from $O(n^2)$ schoolbook complexity to $O(n \log n)$ by mapping polynomials from $R_q$ to the NTT algebra $T_q \cong \mathbb{Z}_q^{256}$. The forward NTT (\emph{FIPS 204, Algorithm 41}) consists of $\log_2 n = 8$ butterfly layers, where layer $i$ performs $2^i$ groups of $n/2^{i+1}$ butterfly operations. Each butterfly requires one modular multiplication and two modular additions, yielding exactly $n/2 \cdot \log_2 n = 1{,}024$ multiplications and $n \log_2 n = 2{,}048$ additions per transform. The inverse NTT (\emph{FIPS 204, Algorithm 42}) has identical structure with an additional $O(n)$ scaling by $n^{-1} \bmod q = 8{,}347{,}681$. Both transforms execute in $O(n \log n)$ field operations.
+
+Pointwise NTT multiplication (\emph{FIPS 204, Algorithm 45}) computes $\hat{h}[i] = \hat{f}[i] \cdot \hat{g}[i]$ for $i \in \{0, \ldots, n-1\}$, requiring exactly $n = 256$ modular multiplications in $O(n)$ time. Each modular multiplication employs Barrett reduction, replacing division by precomputed fixed-point reciprocal computation: $x \bmod q \approx x - \lfloor x \cdot \lfloor 2^k / q \rfloor / 2^k \rfloor \cdot q$, where $k = 48$, achieving constant-time execution in two multiply-shift operations.
+
+\subsubsection{Sampling Operations}
+
+Matrix expansion (\textsc{ExpandA}, \emph{FIPS 204, Algorithm 32}) generates the public matrix $\hat{\mathbf{A}} \in T_q^{k \times \ell}$ by invoking $k \cdot \ell$ instances of rejection sampling from SHAKE-128 output. Each polynomial requires 256 accepted coefficients from 3-byte candidates, with acceptance probability $q / 2^{23} \approx 0.9986$, yielding an expected $\lceil 256 / 0.9986 \rceil \approx 257$ candidates per polynomial. Total cost is $O(k \ell n)$ hash output bytes.
+
+Secret vector sampling (\textsc{ExpandS}, \emph{FIPS 204, Algorithm 33}) generates vectors $\mathbf{s}_1 \in R_q^\ell$ and $\mathbf{s}_2 \in R_q^k$ with coefficients bounded by $\eta$ via rejection from SHAKE-256 half-bytes. Each polynomial requires 256 accepted coefficients, with acceptance probability $5/8$ for $\eta = 2$ and $9/16$ for $\eta = 4$. Total cost is $O((k + \ell) n)$ hash operations.
+
+Challenge sampling (\textsc{SampleInBall}, \emph{FIPS 204, Algorithm 29}) produces a sparse polynomial $c$ with exactly $\tau$ nonzero coefficients in $\{-1, +1\}$ via a Fisher-Yates permutation driven by SHAKE-256, executing in $O(\tau)$ time with $\tau \in \{39, 49, 60\}$.
+
+\subsubsection{Core Protocol Complexity}
+
+Table~\ref{tab:complexity} summarizes the asymptotic complexity of each core operation.
+
+\begin{table}[h]
+	\centering
+	\caption{ML-DSA Algorithm Complexity}
+	\label{tab:complexity}
+	\begin{tabular}{lcc}
+		\toprule
+		\textbf{Operation}                        & \textbf{Dominant Cost}                            & \textbf{Complexity}              \\
+		\midrule
+		\textsc{ExpandA}                          & SHAKE-128 sampling                                & $O(k \ell n)$                    \\
+		NTT / NTT$^{-1}$                          & Butterfly multiplications                         & $O(n \log n)$                    \\
+		$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ & $k$ dot products of $\ell$ NTT polys              & $O(k \ell n)$                    \\
+		\textsc{Decompose}                        & Constant-time Barrett division                    & $O(n)$                           \\
+		Bit-packing                               & Shift and mask                                    & $O(n)$                           \\
+		\midrule
+		\textbf{KeyGen}                           & $\hat{\mathbf{A}} \cdot \text{NTT}(\mathbf{s}_1)$ & $O(k \ell n)$                    \\
+		\textbf{Sign}                             & Rejection loop $\times$ matrix--vector product    & $O(\bar{\kappa} \cdot k \ell n)$ \\
+		\textbf{Verify}                           & $\hat{\mathbf{A}} \cdot \hat{\mathbf{z}}$         & $O(k \ell n)$                    \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\textbf{Key generation} (\emph{FIPS 204, Algorithm 6}) performs \textsc{ExpandA} in $O(k\ell n)$, \textsc{ExpandS} in $O((k+\ell)n)$, $\ell$ forward NTTs in $O(\ell n \log n)$, one matrix--vector product in $O(k\ell n)$, $k$ inverse NTTs in $O(kn \log n)$, and \textsc{Power2Round} over $kn$ coefficients. The matrix--vector product dominates, yielding overall $O(k\ell n)$ complexity.
+
+\textbf{Signing} (\emph{FIPS 204, Algorithm 7}) executes a rejection sampling loop with expected iteration count $\bar{\kappa}$, where $\bar{\kappa} \in \{4.25, 5.1, 3.85\}$ for ML-DSA-44, ML-DSA-65, and ML-DSA-87 respectively. Each iteration performs mask expansion in $O(\ell n)$, $\ell$ forward NTTs in $O(\ell n \log n)$, one matrix--vector product in $O(k\ell n)$, $k$ inverse NTTs in $O(k n \log n)$, decomposition over $kn$ coefficients, challenge hashing and \textsc{SampleInBall} in $O(\tau)$, one challenge NTT in $O(n \log n)$, three NTT-domain vector--scalar multiplications over $(k + \ell)$ polynomials in $O((k+\ell)n)$, and two vector inverse NTTs in $O((k+\ell)n \log n)$. The matrix--vector product dominates each iteration, yielding $O(\bar{\kappa} \cdot k\ell n)$ total complexity. Rejection sampling introduces timing variability, as each failed iteration repeats the full computational cost.
+
+\textbf{Verification} (\emph{FIPS 204, Algorithm 8}) executes deterministically: \textsc{SampleInBall} in $O(\tau)$, two forward NTTs in $O((k + \ell) n \log n)$, one matrix--vector product in $O(k\ell n)$, one NTT-domain vector product in $O(kn)$, one vector inverse NTT in $O(kn \log n)$, and \textsc{UseHint} over $kn$ coefficients. The matrix--vector product dominates at $O(k\ell n)$.
+
+\subsubsection{Parameter-Specific Operation Counts}
+
+Table~\ref{tab:op-counts} provides concrete operation counts for each parameter set. Modular multiplications serve as the primary cost metric, as each requires a 64-bit product followed by Barrett reduction.
+
+\begin{table}[h]
+	\centering
+	\caption{Dominant Modular Multiplication Counts per Operation}
+	\label{tab:op-counts}
+	\begin{tabular}{lccc}
+		\toprule
+		\textbf{Component}                                    & \textbf{DSA-44}    & \textbf{DSA-65}    & \textbf{DSA-87}    \\
+		                                                      & $(k{=}4,\ell{=}4)$ & $(k{=}6,\ell{=}5)$ & $(k{=}8,\ell{=}7)$ \\
+		\midrule
+		NTT (per polynomial)                                  & 1,024              & 1,024              & 1,024              \\
+		$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ (pointwise) & 4,096              & 7,680              & 14,336             \\
+		KeyGen NTTs                                           & 8,192              & 11,264             & 15,360             \\
+		Sign NTTs (per iter.)                                 & 12,288             & 16,384             & 22,528             \\
+		Verify NTTs                                           & 10,240             & 14,336             & 19,456             \\
+		\midrule
+		KeyGen total                                          & 12,288             & 18,944             & 29,696             \\
+		Sign total (per iter.)                                & 16,384             & 24,064             & 36,864             \\
+		Sign total (expected)                                 & 69,632             & 122,726            & 141,926            \\
+		Verify total                                          & 14,336             & 22,016             & 33,792             \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+
 \subsection{MQTT Protocol}
 
 Message Queuing Telemetry Transport (MQTT) constitutes an OASIS standard messaging protocol implementing publish-subscribe architecture with minimal overhead for resource-constrained IoT devices. MQTT specifies three Quality of Service levels: QoS 0 (fire-and-forget), QoS 1 (guaranteed delivery via PUBACK), and QoS 2 (exactly-once delivery). Native security provisions include username/password authentication and TLS integration, but lack built-in digital signature support.
