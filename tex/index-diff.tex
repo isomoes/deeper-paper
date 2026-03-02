@@ -1,7 +1,7 @@
 \documentclass[final, twoside]{IEEEtran} % regular paper
 %DIF LATEXDIFF DIFFERENCE FILE
-%DIF DEL /tmp/index-old.tex   Mon Feb  2 11:03:13 2026
-%DIF ADD /tmp/index-new.tex   Mon Feb  2 11:03:14 2026
+%DIF DEL /tmp/index-old.tex   Mon Mar  2 10:31:22 2026
+%DIF ADD /tmp/index-new.tex   Mon Mar  2 10:31:37 2026
 \setlength\columnwidth{0.5\textwidth} % this must be set in one-column mode
 \usepackage{booktabs}
 \usepackage{graphicx}
@@ -200,9 +200,8 @@
 \maketitle
 
 \begin{abstract}
-	The emergence of large-scale quantum computers necessitates migration of Internet of Things (IoT) systems to post-quantum cryptographic standards. This work evaluates ML-DSA (Module-Lattice-Based Digital Signature Algorithm) integration within MQTT-based IoT systems through performance analysis on ARM Cortex-M4 microcontrollers\DIFdelbegin \DIFdel{and proposes an adaptive security level selection protocol}\DIFdelend . Performance measurements quantify 70--122$\times$ computational overhead relative to ECDSA, with signature generation latencies of 657--1,150\,ms across parameter sets.
-\DIFdelbegin \DIFdel{The adaptive protocol reduces average signing overhead by 15.8--41.2\% compared to fixed highest-security configurations while maintaining minimum security guarantees per message class, extending battery lifetime by 18.8--55.2\% for energy-constrained deployments.
-}\DIFdelend \end{abstract}
+	The emergence of large-scale quantum computers necessitates migration of Internet of Things (IoT) systems to post-quantum cryptographic standards. This work evaluates ML-DSA (Module-Lattice-Based Digital Signature Algorithm) integration within MQTT-based IoT systems through performance analysis on ARM Cortex-M4 microcontrollers. Performance measurements quantify 70--122$\times$ computational overhead relative to ECDSA, with signature generation latencies of 657--1,150\,ms across parameter sets.
+\end{abstract}
 
 \begin{IEEEkeywords}
 	Post-Quantum Cryptography, ML-DSA, MQTT Protocol, IoT Security, Resource-Constrained Devices
@@ -218,21 +217,15 @@ Post-quantum signature schemes impose substantial overhead compared to classical
 
 Internet of Things (IoT) systems exemplify these deployment challenges. The MQTT protocol, widely adopted for IoT messaging due to its lightweight design, experiences performance degradation when post-quantum signatures introduce overhead on resource-constrained devices. Despite performance overhead, signature-based authentication remains essential for applications requiring cryptographic non-repudiation, audit trails, and public key infrastructure compatibility. This disparity between standardization progress and deployment feasibility motivates systematic performance characterization.
 
-This work addresses ML-DSA integration within MQTT-based IoT systems through performance analysis on ARM Cortex-M4 microcontrollers\DIFdelbegin \DIFdel{and proposes an adaptive security level selection protocol. Three }\DIFdelend \DIFaddbegin \DIFadd{. Two }\DIFaddend contributions advance post-quantum IoT deployment:
+This work addresses ML-DSA integration within MQTT-based IoT systems through performance analysis on ARM Cortex-M4 microcontrollers. Two contributions advance post-quantum IoT deployment:
 
 \begin{enumerate}
-	\item \DIFdelbegin \textbf{\DIFdel{Adaptive Security Level Selection Protocol}}%DIFAUXCMD
-\DIFdel{: A protocol dynamically selecting ML-DSA parameter sets based on device resource state and message criticality, reducing computational overhead by 15.8--41.2\% compared to fixed highest-security configurations while maintaining minimum security guarantees.
-}%DIFDELCMD < 
-
-%DIFDELCMD < 	\item %%%
-\item%DIFAUXCMD
-\DIFdelend \textbf{Performance Benchmarking}: Cycle-accurate measurements of ML-DSA signature operations on ARM Cortex-M4 microcontrollers at 168 MHz across all three standardized parameter sets, quantifying execution latency and throughput.
+	\item \textbf{Performance Benchmarking}: Cycle-accurate measurements of ML-DSA signature operations on ARM Cortex-M4 microcontrollers at 168 MHz across all three standardized parameter sets, quantifying execution latency and throughput.
 
 	\item \textbf{MQTT Integration Assessment}: End-to-end latency and message size overhead evaluation within MQTT publish-subscribe workflows, comparing ML-DSA against ECDSA P-256 baseline.
 \end{enumerate}
 
-The remainder of this paper is organized as follows: Section~\ref{sec:related} presents background and related work. Section~\ref{sec:architecture} describes the system architecture\DIFdelbegin \DIFdel{and adaptive protocol}\DIFdelend . Section~\ref{sec:evaluation} presents experimental evaluation. Section~\ref{sec:conclusion} concludes with implications for deployment.
+The remainder of this paper is organized as follows: Section~\ref{sec:related} presents background and related work. Section~\ref{sec:architecture} describes the system architecture. Section~\ref{sec:evaluation} presents experimental evaluation. Section~\ref{sec:conclusion} concludes with implications for deployment.
 
 \section{Background and Related Work}\label{sec:related}
 
@@ -259,7 +252,97 @@ ML-DSA implements rejection sampling requiring iterative signature generation wi
 	\end{tabular}
 \end{table}
 
-\subsection{MQTT Protocol}
+\DIFaddbegin \subsection{\DIFadd{Algorithm Complexity Analysis}}\label{sec:complexity}
+
+\DIFadd{The computational cost of ML-DSA is governed by operations over the polynomial ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$ with $q = 8{,}380{,}417$. Let $n = 256$ denote the polynomial degree, and let $(k, \ell)$ denote the matrix dimensions for a given parameter set. The following analysis derives operation counts and asymptotic complexities for each algorithmic component based on FIPS 204~\mbox{%DIFAUXCMD
+\cite{NIST-FIPS-204}}\hskip0pt%DIFAUXCMD
+. To distinguish NIST-standardized procedures from paper-specific routines, all standard references are denoted as }\emph{\DIFadd{FIPS 204, Algorithm $x$}}\DIFadd{.
+}
+
+\subsubsection{\DIFadd{Number Theoretic Transform}}
+
+\DIFadd{The NTT converts polynomial multiplication from $O(n^2)$ schoolbook complexity to $O(n \log n)$ by mapping polynomials from $R_q$ to the NTT algebra $T_q \cong \mathbb{Z}_q^{256}$. The forward NTT (}\emph{\DIFadd{FIPS 204, Algorithm 41}}\DIFadd{) consists of $\log_2 n = 8$ butterfly layers, where layer $i$ performs $2^i$ groups of $n/2^{i+1}$ butterfly operations. Each butterfly requires one modular multiplication and two modular additions, yielding exactly $n/2 \cdot \log_2 n = 1{,}024$ multiplications and $n \log_2 n = 2{,}048$ additions per transform. The inverse NTT (}\emph{\DIFadd{FIPS 204, Algorithm 42}}\DIFadd{) has identical structure with an additional $O(n)$ scaling by $n^{-1} \bmod q = 8{,}347{,}681$. Both transforms execute in $O(n \log n)$ field operations.
+}
+
+\DIFadd{Pointwise NTT multiplication (}\emph{\DIFadd{FIPS 204, Algorithm 45}}\DIFadd{) computes $\hat{h}[i] = \hat{f}[i] \cdot \hat{g}[i]$ for $i \in \{0, \ldots, n-1\}$, requiring exactly $n = 256$ modular multiplications in $O(n)$ time. Each modular multiplication employs Barrett reduction, replacing division by precomputed fixed-point reciprocal computation: $x \bmod q \approx x - \lfloor x \cdot \lfloor 2^k / q \rfloor / 2^k \rfloor \cdot q$, where $k = 48$, achieving constant-time execution in two multiply-shift operations.
+}
+
+\subsubsection{\DIFadd{Sampling Operations}}
+
+\DIFadd{Matrix expansion (}\textsc{\DIFadd{ExpandA}}\DIFadd{, }\emph{\DIFadd{FIPS 204, Algorithm 32}}\DIFadd{) generates the public matrix $\hat{\mathbf{A}} \in T_q^{k \times \ell}$ by invoking $k \cdot \ell$ instances of rejection sampling from SHAKE-128 output. Each polynomial requires 256 accepted coefficients from 3-byte candidates, with acceptance probability $q / 2^{23} \approx 0.9986$, yielding an expected $\lceil 256 / 0.9986 \rceil \approx 257$ candidates per polynomial. Total cost is $O(k \ell n)$ hash output bytes.
+}
+
+\DIFadd{Secret vector sampling (}\textsc{\DIFadd{ExpandS}}\DIFadd{, }\emph{\DIFadd{FIPS 204, Algorithm 33}}\DIFadd{) generates vectors $\mathbf{s}_1 \in R_q^\ell$ and $\mathbf{s}_2 \in R_q^k$ with coefficients bounded by $\eta$ via rejection from SHAKE-256 half-bytes. Each polynomial requires 256 accepted coefficients, with acceptance probability $5/8$ for $\eta = 2$ and $9/16$ for $\eta = 4$. Total cost is $O((k + \ell) n)$ hash operations.
+}
+
+\DIFadd{Challenge sampling (}\textsc{\DIFadd{SampleInBall}}\DIFadd{, }\emph{\DIFadd{FIPS 204, Algorithm 29}}\DIFadd{) produces a sparse polynomial $c$ with exactly $\tau$ nonzero coefficients in $\{-1, +1\}$ via a Fisher-Yates permutation driven by SHAKE-256, executing in $O(\tau)$ time with $\tau \in \{39, 49, 60\}$.
+}
+
+\subsubsection{\DIFadd{Core Protocol Complexity}}
+
+\DIFadd{Table~\ref{tab:complexity} summarizes the asymptotic complexity of each core operation.
+}
+
+\begin{table}[h]
+	\centering
+	\caption{\DIFaddFL{ML-DSA Algorithm Complexity}}
+	\label{tab:complexity}
+	\begin{tabular}{lcc}
+		\toprule
+		\textbf{\DIFaddFL{Operation}}                        & \textbf{\DIFaddFL{Dominant Cost}}                            & \textbf{\DIFaddFL{Complexity}}              \\
+		\midrule
+		\textsc{\DIFaddFL{ExpandA}}                          & \DIFaddFL{SHAKE-128 sampling                                }& \DIFaddFL{$O(k \ell n)$                    }\\
+		\DIFaddFL{NTT / NTT$^{-1}$                          }& \DIFaddFL{Butterfly multiplications                         }& \DIFaddFL{$O(n \log n)$                    }\\
+		\DIFaddFL{$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ }& \DIFaddFL{$k$ dot products of $\ell$ NTT polys              }& \DIFaddFL{$O(k \ell n)$                    }\\
+		\textsc{\DIFaddFL{Decompose}}                        & \DIFaddFL{Constant-time Barrett division                    }& \DIFaddFL{$O(n)$                           }\\
+		\DIFaddFL{Bit-packing                               }& \DIFaddFL{Shift and mask                                    }& \DIFaddFL{$O(n)$                           }\\
+		\midrule
+		\textbf{\DIFaddFL{KeyGen}}                           & \DIFaddFL{$\hat{\mathbf{A}} \cdot \text{NTT}(\mathbf{s}_1)$ }& \DIFaddFL{$O(k \ell n)$                    }\\
+		\textbf{\DIFaddFL{Sign}}                             & \DIFaddFL{Rejection loop $\times$ matrix--vector product    }& \DIFaddFL{$O(\bar{\kappa} \cdot k \ell n)$ }\\
+		\textbf{\DIFaddFL{Verify}}                           & \DIFaddFL{$\hat{\mathbf{A}} \cdot \hat{\mathbf{z}}$         }& \DIFaddFL{$O(k \ell n)$                    }\\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\textbf{\DIFadd{Key generation}} \DIFadd{(}\emph{\DIFadd{FIPS 204, Algorithm 6}}\DIFadd{) performs }\textsc{\DIFadd{ExpandA}} \DIFadd{in $O(k\ell n)$, }\textsc{\DIFadd{ExpandS}} \DIFadd{in $O((k+\ell)n)$, $\ell$ forward NTTs in $O(\ell n \log n)$, one matrix--vector product in $O(k\ell n)$, $k$ inverse NTTs in $O(kn \log n)$, and }\textsc{\DIFadd{Power2Round}} \DIFadd{over $kn$ coefficients. The matrix--vector product dominates, yielding overall $O(k\ell n)$ complexity.
+}
+
+\textbf{\DIFadd{Signing}} \DIFadd{(}\emph{\DIFadd{FIPS 204, Algorithm 7}}\DIFadd{) executes a rejection sampling loop with expected iteration count $\bar{\kappa}$, where $\bar{\kappa} \in \{4.25, 5.1, 3.85\}$ for ML-DSA-44, ML-DSA-65, and ML-DSA-87 respectively. Each iteration performs mask expansion in $O(\ell n)$, $\ell$ forward NTTs in $O(\ell n \log n)$, one matrix--vector product in $O(k\ell n)$, $k$ inverse NTTs in $O(k n \log n)$, decomposition over $kn$ coefficients, challenge hashing and }\textsc{\DIFadd{SampleInBall}} \DIFadd{in $O(\tau)$, one challenge NTT in $O(n \log n)$, three NTT-domain vector--scalar multiplications over $(k + \ell)$ polynomials in $O((k+\ell)n)$, and two vector inverse NTTs in $O((k+\ell)n \log n)$. The matrix--vector product dominates each iteration, yielding $O(\bar{\kappa} \cdot k\ell n)$ total complexity. Rejection sampling introduces timing variability, as each failed iteration repeats the full computational cost.
+}
+
+\textbf{\DIFadd{Verification}} \DIFadd{(}\emph{\DIFadd{FIPS 204, Algorithm 8}}\DIFadd{) executes deterministically: }\textsc{\DIFadd{SampleInBall}} \DIFadd{in $O(\tau)$, two forward NTTs in $O((k + \ell) n \log n)$, one matrix--vector product in $O(k\ell n)$, one NTT-domain vector product in $O(kn)$, one vector inverse NTT in $O(kn \log n)$, and }\textsc{\DIFadd{UseHint}} \DIFadd{over $kn$ coefficients. The matrix--vector product dominates at $O(k\ell n)$.
+}
+
+\subsubsection{\DIFadd{Parameter-Specific Operation Counts}}
+
+\DIFadd{Table~\ref{tab:op-counts} provides concrete operation counts for each parameter set. Modular multiplications serve as the primary cost metric, as each requires a 64-bit product followed by Barrett reduction.
+}
+
+\begin{table}[h]
+	\centering
+	\caption{\DIFaddFL{Dominant Modular Multiplication Counts per Operation}}
+	\label{tab:op-counts}
+	\begin{tabular}{lccc}
+		\toprule
+		\textbf{\DIFaddFL{Component}}                                    & \textbf{\DIFaddFL{DSA-44}}    & \textbf{\DIFaddFL{DSA-65}}    & \textbf{\DIFaddFL{DSA-87}}    \\
+		                                                      & \DIFaddFL{$(k{=}4,\ell{=}4)$ }& \DIFaddFL{$(k{=}6,\ell{=}5)$ }& \DIFaddFL{$(k{=}8,\ell{=}7)$ }\\
+		\midrule
+		\DIFaddFL{NTT (per polynomial)                                  }& \DIFaddFL{1,024              }& \DIFaddFL{1,024              }& \DIFaddFL{1,024              }\\
+		\DIFaddFL{$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ (pointwise) }& \DIFaddFL{4,096              }& \DIFaddFL{7,680              }& \DIFaddFL{14,336             }\\
+		\DIFaddFL{KeyGen NTTs                                           }& \DIFaddFL{8,192              }& \DIFaddFL{11,264             }& \DIFaddFL{15,360             }\\
+		\DIFaddFL{Sign NTTs (per iter.)                                 }& \DIFaddFL{12,288             }& \DIFaddFL{16,384             }& \DIFaddFL{22,528             }\\
+		\DIFaddFL{Verify NTTs                                           }& \DIFaddFL{10,240             }& \DIFaddFL{14,336             }& \DIFaddFL{19,456             }\\
+		\midrule
+		\DIFaddFL{KeyGen total                                          }& \DIFaddFL{12,288             }& \DIFaddFL{18,944             }& \DIFaddFL{29,696             }\\
+		\DIFaddFL{Sign total (per iter.)                                }& \DIFaddFL{16,384             }& \DIFaddFL{24,064             }& \DIFaddFL{36,864             }\\
+		\DIFaddFL{Sign total (expected)                                 }& \DIFaddFL{69,632             }& \DIFaddFL{122,726            }& \DIFaddFL{141,926            }\\
+		\DIFaddFL{Verify total                                          }& \DIFaddFL{14,336             }& \DIFaddFL{22,016             }& \DIFaddFL{33,792             }\\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+
+\DIFaddend \subsection{MQTT Protocol}
 
 Message Queuing Telemetry Transport (MQTT) constitutes an OASIS standard messaging protocol implementing publish-subscribe architecture with minimal overhead for resource-constrained IoT devices. MQTT specifies three Quality of Service levels: QoS 0 (fire-and-forget), QoS 1 (guaranteed delivery via PUBACK), and QoS 2 (exactly-once delivery). Native security provisions include username/password authentication and TLS integration, but lack built-in digital signature support.
 
@@ -271,23 +354,13 @@ Banegas et al.~\cite{Banegas2021} benchmarked CRYSTALS-Dilithium on embedded sys
 
 Practical deployment scenarios reveal performance bottlenecks. Analysis of the SUIT (Software Update for the Internet of Things) framework demonstrates post-quantum signature verification requiring up to 3.2 seconds on low-power microcontrollers, exceeding sub-second latency constraints for real-time applications. Marchsreiter~\cite{Marchsreiter2024} reports order-of-magnitude transaction throughput reductions on embedded blockchain nodes with ML-DSA. Fault injection research~\cite{Li2024} achieved 89.5\% attack success rates on ARM Cortex-M ML-DSA implementations through electromagnetic fault injection.
 
-Kim and Seo~\cite{Kim2025} demonstrate that post-quantum signatures introduce prohibitive MQTT authentication overhead, motivating KEM-based architectures. Their CRYSTALS-Kyber implementation achieves 4.32-second handshake completion on 8-bit AVR microcontrollers. Barrett multiplication techniques achieve 1.38--1.51$\times$ performance improvements on ARM Cortex-M3~\cite{Barrett2023}. However, empirical studies evaluating ML-DSA performance within \DIFaddbegin \DIFadd{full }\DIFaddend MQTT protocol implementations remain \DIFdelbegin \DIFdel{absent}\DIFdelend \DIFaddbegin \DIFadd{limited}\DIFaddend , representing a knowledge gap in post-quantum IoT deployment.
+Kim and Seo~\cite{Kim2025} demonstrate that post-quantum signatures introduce prohibitive MQTT authentication overhead, motivating KEM-based architectures. Their CRYSTALS-Kyber implementation achieves 4.32-second handshake completion on 8-bit AVR microcontrollers. Barrett multiplication techniques achieve 1.38--1.51$\times$ performance improvements on ARM Cortex-M3~\cite{Barrett2023}. However, empirical studies evaluating ML-DSA performance within full MQTT protocol implementations remain limited, representing a knowledge gap in post-quantum IoT deployment.
 
-\DIFaddbegin \DIFadd{Recent MQTT-specific evaluations further characterize migration costs. Samandari and Gritti~\mbox{%DIFAUXCMD
-\cite{Samandari2023} }\hskip0pt%DIFAUXCMD
-analyze post-quantum authentication in MQTT using Dilithium and report latency and payload expansion relative to classical baselines. Rampazzo and Henriques~\mbox{%DIFAUXCMD
-\cite{Rampazzo2023} }\hskip0pt%DIFAUXCMD
-quantify hybrid post-quantum overhead in MQTT, showing that hybrid handshakes and signature bundles increase end-to-end latency and message sizes even in short publish-subscribe exchanges.
-}
+Recent MQTT-specific evaluations further characterize migration costs. Samandari and Gritti~\cite{Samandari2023} analyze post-quantum authentication in MQTT using Dilithium and report latency and payload expansion relative to classical baselines. Rampazzo and Henriques~\cite{Rampazzo2023} quantify hybrid post-quantum overhead in MQTT, showing that hybrid handshakes and signature bundles increase end-to-end latency and message sizes even in short publish-subscribe exchanges.
 
-\DIFadd{Major transfer issues for post-quantum migration are increasingly framed as crypto-agility and deployment coordination problems. Large-scale traffic inspection indicates substantial lag in quantum-readiness and emphasizes hybrid key exchange, certificate lifecycle adjustments, and transition monitoring as prerequisites for migration~\mbox{%DIFAUXCMD
-\cite{Cho2025}}\hskip0pt%DIFAUXCMD
-. Performance studies in TLS and SSH further show that handshake latency and certificate size overheads remain the dominant integration barriers, with operational trade-offs between interoperability and security assurances~\mbox{%DIFAUXCMD
-\cite{Kampanakis2020,Sikeridis2020}}\hskip0pt%DIFAUXCMD
-. These observations align with IoT constraints where bandwidth and energy budgets magnify protocol-level overhead.
-}
+Major transfer issues for post-quantum migration are increasingly framed as crypto-agility and deployment coordination problems. Large-scale traffic inspection indicates substantial lag in quantum-readiness and emphasizes hybrid key exchange, certificate lifecycle adjustments, and transition monitoring as prerequisites for migration~\cite{Cho2025}. Performance studies in TLS and SSH further show that handshake latency and certificate size overheads remain the dominant integration barriers, with operational trade-offs between interoperability and security assurances~\cite{Kampanakis2020,Sikeridis2020}. These observations align with IoT constraints where bandwidth and energy budgets magnify protocol-level overhead.
 
-\DIFaddend \section{System Architecture and Adaptive Protocol}\label{sec:architecture}
+\section{System Architecture and Adaptive Protocol}\label{sec:architecture}
 
 \subsection{Hardware Platform}
 
@@ -317,160 +390,7 @@ The implementation incorporates optimization techniques targeting NTT operations
 
 Combined optimization techniques achieve 40--50\% performance improvement relative to reference implementations.
 
-\DIFdelbegin \subsection{\DIFdel{Adaptive Security Level Selection}}%DIFAUXCMD
-\addtocounter{subsection}{-1}%DIFAUXCMD
-%DIFDELCMD < \label{sec:adaptive}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Fixed security parameter selection imposes unnecessary overhead when uniform highest-security configurations are applied regardless of message characteristics. The adaptive protocol dynamically selects ML-DSA parameter sets based on message criticality and device resource availability.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\subsubsection{\DIFdel{Design Rationale}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The three ML-DSA parameter sets provide NIST security levels 2, 3, and 5 respectively. Performance measurements demonstrate that ML-DSA-87 incurs 75\% greater signing latency and 91\% larger signatures compared to ML-DSA-44. For IoT deployments transmitting heterogeneous message types---routine telemetry, configuration updates, security alerts, firmware signatures---applying uniform ML-DSA-87 security to all messages wastes computational resources on low-criticality data.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The adaptive protocol addresses this inefficiency through three design principles: (1) message criticality classification with higher-criticality messages receiving stronger protection, (2) resource-aware selection preventing resource exhaustion, and (3) minimum security guarantees ensuring adaptive selection never compromises security below application-defined thresholds.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\subsubsection{\DIFdel{Message Criticality Classification}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The protocol defines four message criticality levels with corresponding minimum security requirements:
-}%DIFDELCMD < 
-
-%DIFDELCMD < \begin{table}[h]
-%DIFDELCMD < 	\centering
-%DIFDELCMD < 	%%%
-%DIFDELCMD < \caption{%
-{%DIFAUXCMD
-\DIFdelFL{Message Criticality Classification}}
-	%DIFAUXCMD
-%DIFDELCMD < \label{tab:criticality}
-%DIFDELCMD < 	\begin{tabular}{llcc}
-%DIFDELCMD < 		\toprule
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Level}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Message Types}}    %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Min.}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Default}} %DIFAUXCMD
-%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\DIFdelFL{Critical       }%DIFDELCMD < & %%%
-\DIFdelFL{Firmware, credentials     }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-87     }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-87        }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{High           }%DIFDELCMD < & %%%
-\DIFdelFL{Alerts, config., commands }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-65     }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-87        }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Medium         }%DIFDELCMD < & %%%
-\DIFdelFL{Aggregated data, status   }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-44     }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-65        }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Low            }%DIFDELCMD < & %%%
-\DIFdelFL{Telemetry, heartbeats     }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-44     }%DIFDELCMD < & %%%
-\DIFdelFL{ML-DSA-44        }%DIFDELCMD < \\
-%DIFDELCMD < 		\bottomrule
-%DIFDELCMD < 	\end{tabular}
-%DIFDELCMD < \end{table}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Critical messages (firmware updates, cryptographic key material) require ML-DSA-87 regardless of resource state. High-criticality messages (security alerts, configuration changes) default to ML-DSA-87 but permit downgrade to ML-DSA-65 under resource constraints. Message criticality assignment occurs at application design time through topic-based classification using MQTT topic hierarchies.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\subsubsection{\DIFdel{Resource State Assessment}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Device resource state assessment quantifies available computational capacity. The protocol monitors three dimensions: energy state ($E$) as normalized battery charge level, memory availability ($M$) as free SRAM normalized to ML-DSA-87 requirements, and thermal state ($T$) as normalized processor temperature. The composite resource score combines these dimensions:
-}\begin{displaymath}
-	\DIFdel{R = \alpha \cdot E + \beta \cdot M + \gamma \cdot (1 - T)
-}\end{displaymath}%DIFAUXCMD
-\DIFdel{where weighting coefficients $\alpha$, $\beta$, $\gamma$ sum to 1. Default configuration employs $\alpha = 0.5$, $\beta = 0.3$, $\gamma = 0.2$, prioritizing energy conservation for battery-powered deployments.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\subsubsection{\DIFdel{Selection Algorithm}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The selection algorithm determines the appropriate ML-DSA parameter set based on message criticality class $C$ and resource score $R$:
-}%DIFDELCMD < 
-
-%DIFDELCMD < \begin{algorithm}[h]
-%DIFDELCMD < 	%%%
-%DIFDELCMD < \caption{%
-{%DIFAUXCMD
-\DIFdel{Adaptive Security Level Selection}}
-	%DIFAUXCMD
-%DIFDELCMD < \label{alg:adaptive}
-%DIFDELCMD < 	\SetKwInOut{Input}{Input}
-%DIFDELCMD < 	\SetKwInOut{Output}{Output}
-%DIFDELCMD < 	\Input{Message criticality $C$, Resource score $R$}
-%DIFDELCMD < 	\Output{ML-DSA parameter set $P$}
-%DIFDELCMD < 	%%%
-\DIFdel{$P_{\min} \leftarrow$ MinimumLevel($C$)\;
-	$P_{\text{def}} \leftarrow$ DefaultLevel($C$)\;
-	}%DIFDELCMD < \uIf{$R \geq 0.7$}{
-%DIFDELCMD < 		$P \leftarrow P_{\text{def}}$\;
-%DIFDELCMD < 	}
-%DIFDELCMD < 	\uElseIf{$R \geq 0.4$}{
-%DIFDELCMD < 		$P \leftarrow \max(P_{\min}, P_{\text{def}} - 1)$\;
-%DIFDELCMD < 	}
-%DIFDELCMD < 	\Else{
-%DIFDELCMD < 		$P \leftarrow P_{\min}$\;
-%DIFDELCMD < 	}
-%DIFDELCMD < 	\Return{$P$}%%%
-\DIFdel{\;
-}%DIFDELCMD < \end{algorithm}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Protocol overhead comprises topic parsing (12--18 $\mu$s), resource state sampling (8--15 $\mu$s), and selection algorithm execution (3--5 $\mu$s), totaling 23--38 $\mu$s per message---less than 0.006\% of ML-DSA-44 signing latency.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\subsubsection{\DIFdel{Security Analysis}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The adaptive protocol maintains security guarantees through three mechanisms. First, minimum security enforcement ensures each criticality class defines a minimum security level that cannot be violated regardless of resource state. Second, cryptographic binding through signature algorithm identifiers embedded in message metadata enables verifiers to confirm the security level applied. Third, audit trail generation logs parameter selection decisions for post-hoc security analysis.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The protocol does not introduce new cryptographic vulnerabilities, as all signatures employ standardized ML-DSA algorithms with NIST-validated security properties. Adaptive selection affects only which parameter set is employed, not the underlying cryptographic operations.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdelend \section{Experimental Evaluation}\label{sec:evaluation}
+\section{Experimental Evaluation}\label{sec:evaluation}
 
 \subsection{Methodology}\label{sec:methodology}
 
@@ -637,231 +557,7 @@ End-to-end latency of 1.11--1.88 seconds exceeds sub-second bounds for interacti
 
 Sustainable message rates range from 0.87 to 1.52 messages per second across ML-DSA parameter sets, compared to 104--109 messages per second for ECDSA. Signature generation constitutes the primary performance bottleneck, representing throughput degradation of 70--122$\times$ relative to classical signature schemes.
 
-\DIFdelbegin \subsubsection{\DIFdel{Adaptive Protocol Evaluation}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\paragraph{\DIFdel{Workload Profiles}}
-%DIFAUXCMD
-\addtocounter{paragraph}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Evaluation employs three representative IoT workload profiles: }\textbf{\DIFdel{Environmental Monitoring}} %DIFAUXCMD
-\DIFdel{(80\% low-criticality telemetry, 15\% medium, 4\% high, 1\% critical), }\textbf{\DIFdel{Industrial Control}} %DIFAUXCMD
-\DIFdel{(60\% low, 20\% medium, 15\% high, 5\% critical), and }\textbf{\DIFdel{Security-Sensitive}} %DIFAUXCMD
-\DIFdel{(40\% low, 30\% medium, 20\% high, 10\% critical).
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\paragraph{\DIFdel{Overhead Reduction}}
-%DIFAUXCMD
-\addtocounter{paragraph}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Table~\ref{tab:adaptive-overhead} presents average signing latency under adaptive protocol compared to fixed ML-DSA-87 baseline.
-}%DIFDELCMD < 
-
-%DIFDELCMD < \begin{table}[h]
-%DIFDELCMD < 	\centering
-%DIFDELCMD < 	%%%
-%DIFDELCMD < \caption{%
-{%DIFAUXCMD
-\DIFdelFL{Adaptive Protocol Overhead Reduction}}
-	%DIFAUXCMD
-%DIFDELCMD < \label{tab:adaptive-overhead}
-%DIFDELCMD < 	\begin{tabular}{llccc}
-%DIFDELCMD < 		\toprule
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Workload}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Resource}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Fixed}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Adaptive}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Reduct.}} %DIFAUXCMD
-%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\DIFdelFL{Environmental     }%DIFDELCMD < & %%%
-\DIFdelFL{High ($R\geq0.7$) }%DIFDELCMD < & %%%
-\DIFdelFL{1,136\,ms      }%DIFDELCMD < & %%%
-\DIFdelFL{732\,ms           }%DIFDELCMD < & %%%
-\DIFdelFL{35.6\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Environmental     }%DIFDELCMD < & %%%
-\DIFdelFL{Low ($R<0.4$)     }%DIFDELCMD < & %%%
-\DIFdelFL{1,136\,ms      }%DIFDELCMD < & %%%
-\DIFdelFL{678\,ms           }%DIFDELCMD < & %%%
-\DIFdelFL{40.3\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Industrial        }%DIFDELCMD < & %%%
-\DIFdelFL{High              }%DIFDELCMD < & %%%
-\DIFdelFL{1,136\,ms      }%DIFDELCMD < & %%%
-\DIFdelFL{849\,ms           }%DIFDELCMD < & %%%
-\DIFdelFL{25.3\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Industrial        }%DIFDELCMD < & %%%
-\DIFdelFL{Low               }%DIFDELCMD < & %%%
-\DIFdelFL{1,136\,ms      }%DIFDELCMD < & %%%
-\DIFdelFL{743\,ms           }%DIFDELCMD < & %%%
-\DIFdelFL{34.6\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Security          }%DIFDELCMD < & %%%
-\DIFdelFL{High              }%DIFDELCMD < & %%%
-\DIFdelFL{1,136\,ms      }%DIFDELCMD < & %%%
-\DIFdelFL{956\,ms           }%DIFDELCMD < & %%%
-\DIFdelFL{15.8\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Security          }%DIFDELCMD < & %%%
-\DIFdelFL{Low               }%DIFDELCMD < & %%%
-\DIFdelFL{1,136\,ms      }%DIFDELCMD < & %%%
-\DIFdelFL{847\,ms           }%DIFDELCMD < & %%%
-\DIFdelFL{25.4\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		\bottomrule
-%DIFDELCMD < 	\end{tabular}
-%DIFDELCMD < \end{table}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The adaptive protocol achieves 15.8--41.2\% signing latency reduction, with greater savings for workloads dominated by low-criticality messages. Environmental monitoring workloads achieve maximum benefit (35.6--40.3\% reduction) due to 80\% low-criticality message composition.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\paragraph{\DIFdel{Energy Savings}}
-%DIFAUXCMD
-\addtocounter{paragraph}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Table~\ref{tab:adaptive-energy} presents energy consumption for 100 daily messages.
-}%DIFDELCMD < 
-
-%DIFDELCMD < \begin{table}[h]
-%DIFDELCMD < 	\centering
-%DIFDELCMD < 	%%%
-%DIFDELCMD < \caption{%
-{%DIFAUXCMD
-\DIFdelFL{Adaptive Protocol Energy Consumption (100 Messages/Day)}}
-	%DIFAUXCMD
-%DIFDELCMD < \label{tab:adaptive-energy}
-%DIFDELCMD < 	\begin{tabular}{lcccc}
-%DIFDELCMD < 		\toprule
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Workload}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Fixed}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Adaptive}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Savings}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Lifetime}} %DIFAUXCMD
-%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\DIFdelFL{Environmental     }%DIFDELCMD < & %%%
-\DIFdelFL{5.68\,J/day    }%DIFDELCMD < & %%%
-\DIFdelFL{3.66\,J/day       }%DIFDELCMD < & %%%
-\DIFdelFL{2.02\,J/day      }%DIFDELCMD < & %%%
-\DIFdelFL{+55.2\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Industrial        }%DIFDELCMD < & %%%
-\DIFdelFL{5.68\,J/day    }%DIFDELCMD < & %%%
-\DIFdelFL{4.25\,J/day       }%DIFDELCMD < & %%%
-\DIFdelFL{1.43\,J/day      }%DIFDELCMD < & %%%
-\DIFdelFL{+33.6\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Security          }%DIFDELCMD < & %%%
-\DIFdelFL{5.68\,J/day    }%DIFDELCMD < & %%%
-\DIFdelFL{4.78\,J/day       }%DIFDELCMD < & %%%
-\DIFdelFL{0.90\,J/day      }%DIFDELCMD < & %%%
-\DIFdelFL{+18.8\%           }%DIFDELCMD < \\
-%DIFDELCMD < 		\bottomrule
-%DIFDELCMD < 	\end{tabular}
-%DIFDELCMD < \end{table}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Energy savings translate to 18.8--55.2\% battery lifetime extension. Environmental monitoring deployments extend operational lifetime from 4,190 days (fixed ML-DSA-87) to 6,503 days (adaptive) for 2,000 mAh battery capacity, representing 6.3 additional years of operation.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\paragraph{\DIFdel{Security Level Distribution}}
-%DIFAUXCMD
-\addtocounter{paragraph}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Table~\ref{tab:adaptive-distribution} presents the distribution of selected security levels under adaptive protocol for each workload profile under medium resource conditions ($R \approx 0.5$).
-}%DIFDELCMD < 
-
-%DIFDELCMD < \begin{table}[h]
-%DIFDELCMD < 	\centering
-%DIFDELCMD < 	%%%
-%DIFDELCMD < \caption{%
-{%DIFAUXCMD
-\DIFdelFL{Adaptive Protocol Security Level Distribution ($R \approx 0.5$)}}
-	%DIFAUXCMD
-%DIFDELCMD < \label{tab:adaptive-distribution}
-%DIFDELCMD < 	\begin{tabular}{lcccc}
-%DIFDELCMD < 		\toprule
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Workload}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{DSA-44}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{DSA-65}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{DSA-87}} %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Avg. Level}} %DIFAUXCMD
-%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\DIFdelFL{Environmental     }%DIFDELCMD < & %%%
-\DIFdelFL{80.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{15.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{5.0\%           }%DIFDELCMD < & %%%
-\DIFdelFL{2.25                }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Industrial        }%DIFDELCMD < & %%%
-\DIFdelFL{60.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{20.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{20.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{2.60                }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Security          }%DIFDELCMD < & %%%
-\DIFdelFL{40.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{30.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{30.0\%          }%DIFDELCMD < & %%%
-\DIFdelFL{2.90                }%DIFDELCMD < \\
-%DIFDELCMD < 		\bottomrule
-%DIFDELCMD < 	\end{tabular}
-%DIFDELCMD < \end{table}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Security level distribution directly reflects workload criticality composition. The average security level metric (ML-DSA-44 = 2, ML-DSA-65 = 3, ML-DSA-87 = 5, weighted by selection frequency) quantifies aggregate security posture. All configurations maintain minimum security guarantees per criticality class as defined in Table~\ref{tab:criticality}.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\paragraph{\DIFdel{Protocol Overhead Assessment}}
-%DIFAUXCMD
-\addtocounter{paragraph}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Adaptive protocol execution overhead is measured through cycle-accurate profiling: topic parsing and criticality lookup require 2,016--3,024 cycles (12--18 $\mu$s), resource state sampling requires 1,344--2,520 cycles (8--15 $\mu$s), and selection algorithm execution requires 504--840 cycles (3--5 $\mu$s). Total protocol overhead of 3,864--6,384 cycles (23--38 $\mu$s) represents 0.0035--0.0058\% of ML-DSA-44 signing latency, rendering adaptive selection computationally negligible. Memory overhead comprises 256 bytes for criticality lookup table, 12 bytes for resource state variables, and 48 bytes for configuration parameters, totaling 316 bytes additional SRAM consumption.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdelend \subsubsection{Trade-off Analysis}
+\subsubsection{Trade-off Analysis}
 
 Table~\ref{tab:parameter-tradeoffs} quantifies security-performance trade-offs normalized to ML-DSA-44.
 
@@ -908,11 +604,7 @@ Several optimization strategies mitigate ML-DSA performance overhead in resource
 
 \section{Conclusion}\label{sec:conclusion}
 
-This work presents performance characterization of ML-DSA integration within MQTT-based IoT systems on ARM Cortex-M4 microcontrollers\DIFdelbegin \DIFdel{and proposes an adaptive security level selection protocol}\DIFdelend . Signature generation latencies of 657--1,150\,ms represent 70--122$\times$ overhead compared to ECDSA P-256, establishing signature generation as the primary computational bottleneck limiting sustainable message throughput to 0.87--1.52 messages per second. Memory requirements of 22.7--43.1\,KB SRAM and 37.2--73.9\,KB Flash constrain deployment to mid-range microcontrollers\DIFdelbegin \DIFdel{.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The adaptive protocol achieves 15.8--41.2\% signing latency reduction compared to fixed ML-DSA-87 deployment by dynamically selecting parameter sets based on message criticality and device resource state. For battery-powered deployments, adaptive selection extends operational lifetime by 18.8--55.2\% through energy-aware parameter selection while maintaining minimum security guarantees per message criticality class. Protocol overhead of 23--38 $\mu$s per message represents less than 0.006\% of signing latency}\DIFdelend .
+This work presents performance characterization of ML-DSA integration within MQTT-based IoT systems on ARM Cortex-M4 microcontrollers. Signature generation latencies of 657--1,150\,ms represent 70--122$\times$ overhead compared to ECDSA P-256, establishing signature generation as the primary computational bottleneck limiting sustainable message throughput to 0.87--1.52 messages per second. Memory requirements of 22.7--43.1\,KB SRAM and 37.2--73.9\,KB Flash constrain deployment to mid-range microcontrollers.
 
 ML-DSA remains viable for applications tolerating multi-second latency and sub-hertz publication frequencies, including environmental monitoring, asset tracking, and periodic telemetry reporting. Real-time control systems requiring sub-second response necessitate architectural accommodations or hybrid authentication approaches. Future research directions include hardware acceleration evaluation on emerging ARM Cortex-M processors with cryptographic extensions and batch signature verification schemes for gateway devices.
 
