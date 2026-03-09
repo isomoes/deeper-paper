@@ -17,7 +17,20 @@ Preserve the author's intended meaning while meeting publication standards.
 - Formal academic tone; no colloquialisms
 - Passive voice; avoid first-person pronouns
 - Concise sentences; eliminate unnecessary words
-- Consistent notation and terminology throughout
+
+### IEEE-Like Style
+
+- Prefer precise, neutral claims over promotional language
+- Define acronyms on first use and keep terminology consistent
+- Emphasize measured results, methodological clarity, and practical implications
+
+### Concise Writing
+
+- Remove filler phrases such as "it should be noted that" and "it is worth mentioning that"
+- Replace vague wording with specific terms, quantities, or comparisons
+- Prefer direct verbs and concrete nouns over abstract phrasing
+- Avoid repeating the same claim across the introduction, background, and conclusion
+- Keep sentences compact; split long sentences when they contain multiple ideas
 
 ### Technical Content
 
