@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "ieee-journal-writing": {
+      "source": "isomoes/skills",
+      "sourceType": "github",
+      "computedHash": "1a7c5cb9b8e34e2c35b3942ccdc821e7fe76c0c622c07e15f4e05bb800166a9c"
+    }
+  }
+}
