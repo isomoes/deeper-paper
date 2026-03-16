@@ -53,16 +53,6 @@ jobs:
             index.tex
             index-release-diff.tex
           latexmk_shell_escape: true
-          pre_compile: |
-            if [ -n "$PREVIOUS_TAG" ]; then
-              git show "$PREVIOUS_TAG:tex/index.tex" > index-old.tex
-              cp index.tex index-new.tex
-              latexdiff index-old.tex index-new.tex > index-release-diff.tex
-            else
-              cp index.tex index-release-diff.tex
-            fi
-          post_compile: |
-            rm -f index-old.tex index-new.tex index-release-diff.tex
 
       - name: Rename PDFs with version tag
         run: |
