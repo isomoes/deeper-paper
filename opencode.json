@@ -1,19 +1,10 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "all-in-mcp": {
+    "apaper-mcp": {
       "type": "local",
-      "command": [
-        "pipx",
-        "run",
-        "all-in-mcp==0.4.5"
-      ],
-      "enabled": true,
-      "environment": {
-        "APAPER": "true",
-        "GITHUB_REPO_MCP": "true",
-        "QWEN_SEARCH": "false"
-      }
+      "command": ["npx", "@ai4paper/apaper-mcp"],
+      "enabled": true
     }
   }
 }
