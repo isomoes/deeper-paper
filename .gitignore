@@ -545,3 +545,4 @@ pyrightconfig.json
 
 tex/*.pdf
 uv.lock
+/.opencode/package-lock.json

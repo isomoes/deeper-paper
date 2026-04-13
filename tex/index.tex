@@ -143,15 +143,15 @@ This work addresses that gap through an empirical study of ML-DSA integration in
 \item \textbf{System-Level Evaluation and Deployment Analysis}: Cycle-accurate and end-to-end experiments quantify computational overhead, message expansion, latency, throughput, and memory cost across all three standardized ML-DSA parameter sets relative to an ECDSA P-256 baseline, providing guidance for constrained IoT deployment.
 \end{enumerate}
 
-The remainder of this paper is organized as follows: Section~\ref{sec:related} presents technical background. Section~\ref{sec:architecture} describes the system architecture. Section~\ref{sec:evaluation} presents experimental evaluation. Section~\ref{sec:conclusion} concludes with implications for deployment.
+The remainder of this paper is organized as follows: Section~\ref{sec:related} presents technical background. Section~\ref{sec:architecture} describes the optimized implementation and MQTT-oriented integration method. Section~\ref{sec:evaluation} presents experimental evaluation. Section~\ref{sec:conclusion} concludes with implications for deployment.
 
 \section{Background}\label{sec:related}
 
-\subsection{ML-DSA Algorithm and Complexity Analysis}\label{sec:complexity}
+\subsection{ML-DSA and Deployment-Relevant Properties}\label{sec:complexity}
 
-ML-DSA is NIST's standardized post-quantum digital signature scheme (FIPS 204~\cite{NIST-FIPS-204}) and is derived from CRYSTALS-Dilithium. The algorithm follows the Fiat-Shamir with Aborts paradigm over polynomial rings $R_q = \mathbb{Z}_q[X]/(X^{256} + 1)$ with $q = 8380417$, and its security is based on the Module Learning With Errors (MLWE) and Module Short Integer Solution (MSIS) assumptions. Polynomial arithmetic is implemented through Number Theoretic Transform (NTT) operations with $O(n \log n)$ complexity.
+ML-DSA is NIST's standardized post-quantum digital signature scheme in FIPS 204~\cite{NIST-FIPS-204} and is derived from CRYSTALS-Dilithium. It is constructed over module lattices and uses polynomial arithmetic in the ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$ with $q = 8380417$. On constrained processors, the dominant implementation cost comes from repeated Number Theoretic Transform (NTT)-based polynomial operations and modular arithmetic, which have been identified as the main performance bottlenecks in embedded post-quantum implementations~\cite{pqm4-benchmarks,HwangKim2024}.
 
-ML-DSA uses rejection sampling, so signature generation is iterative. The expected iteration counts are 4.25, 5.1, and 3.85 for ML-DSA-44, ML-DSA-65, and ML-DSA-87, respectively, which directly affects timing predictability. NIST standardizes three parameter sets with distinct security-performance trade-offs. Table~\ref{tab:mldsa-params} summarizes the main implementation characteristics.
+For this paper, two ML-DSA properties are the most relevant. First, the standardized signatures are much larger than classical signatures, which directly affects message expansion in lightweight IoT protocols~\cite{NIST-FIPS-204,HwangKim2024}. Second, signature generation uses rejection sampling and is therefore iterative, which increases latency and introduces runtime variability~\cite{NIST-FIPS-204}. NIST defines three parameter sets with different security and resource trade-offs, summarized in Table~\ref{tab:mldsa-params}.
 
 \begin{table}[h]
 	\centering
@@ -170,102 +170,40 @@ ML-DSA uses rejection sampling, so signature generation is iterative. The expect
 	\end{tabular}
 \end{table}
 
-From a computational perspective, ML-DSA is dominated by polynomial arithmetic over $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$ with $q = 8{,}380{,}417$. Let $n = 256$ denote the polynomial degree, and let $(k, \ell)$ denote the matrix dimensions for a given parameter set. The discussion below highlights only the dominant operations needed to interpret the measured performance results.
-
-\subsubsection{Number Theoretic Transform}
-
-The Number Theoretic Transform (NTT) reduces polynomial multiplication from $O(n^2)$ to $O(n \log n)$ and therefore dominates the arithmetic cost of ML-DSA. For $n = 256$, each forward or inverse transform requires 1,024 modular multiplications and 2,048 modular additions, while pointwise multiplication in the NTT domain requires 256 modular multiplications. As a result, NTT-based matrix--vector products are the main cost driver in key generation, signing, and verification.
-
-\subsubsection{Sampling Operations}
-
-Sampling contributes additional hashing cost but is not the dominant term. Matrix expansion \textsc{ExpandA} requires $O(k \ell n)$ work, secret sampling \textsc{ExpandS} requires $O((k+\ell)n)$ work, and challenge generation \textsc{SampleInBall} requires only $O(\tau)$ operations for $\tau \in \{39,49,60\}$. These stages contribute to the overall implementation overhead, but they remain secondary to repeated NTT-domain matrix--vector products.
-
-\subsubsection{Core Protocol Complexity}
-
-Table~\ref{tab:complexity} summarizes the asymptotic complexity of each core operation.
-
-\begin{table}[h]
-	\centering
-	\caption{ML-DSA Algorithm Complexity}
-	\label{tab:complexity}
-	\begin{tabular}{lcc}
-		\toprule
-		\textbf{Operation}                        & \textbf{Dominant Cost}                            & \textbf{Complexity}              \\
-		\midrule
-		\textsc{ExpandA}                          & SHAKE-128 sampling                                & $O(k \ell n)$                    \\
-		NTT / NTT$^{-1}$                          & Butterfly multiplications                         & $O(n \log n)$                    \\
-		$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ & $k$ dot products of $\ell$ NTT polys              & $O(k \ell n)$                    \\
-		\textsc{Decompose}                        & Constant-time Barrett division                    & $O(n)$                           \\
-		Bit-packing                               & Shift and mask                                    & $O(n)$                           \\
-		\midrule
-		\textbf{KeyGen}                           & $\hat{\mathbf{A}} \cdot \text{NTT}(\mathbf{s}_1)$ & $O(k \ell n)$                    \\
-		\textbf{Sign}                             & Rejection loop $\times$ matrix--vector product    & $O(\bar{\kappa} \cdot k \ell n)$ \\
-		\textbf{Verify}                           & $\hat{\mathbf{A}} \cdot \hat{\mathbf{z}}$         & $O(k \ell n)$                    \\
-		\bottomrule
-	\end{tabular}
-\end{table}
-
-Key generation and verification each contain one dominant NTT-domain matrix--vector product and therefore scale as $O(k\ell n)$. Signing is more expensive because the same core computation is embedded in a rejection-sampling loop, yielding expected complexity $O(\bar{\kappa} \cdot k\ell n)$, where $\bar{\kappa}$ denotes the expected number of signing iterations. This structure explains why signing latency is substantially higher and less predictable than verification latency.
-
-\subsubsection{Parameter-Specific Operation Counts}
-
-Table~\ref{tab:op-counts} reports representative modular multiplication counts for each parameter set. The counts show the rapid growth in arithmetic cost as $(k,\ell)$ increases.
-
-\begin{table}[h]
-	\centering
-	\caption{Dominant Modular Multiplication Counts per Operation}
-	\label{tab:op-counts}
-	\begin{tabular}{lccc}
-		\toprule
-		\textbf{Component}                                    & \textbf{DSA-44}    & \textbf{DSA-65}    & \textbf{DSA-87}    \\
-		                                                      & $(k{=}4,\ell{=}4)$ & $(k{=}6,\ell{=}5)$ & $(k{=}8,\ell{=}7)$ \\
-		\midrule
-		NTT (per polynomial)                                  & 1,024              & 1,024              & 1,024              \\
-		$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ (pointwise) & 4,096              & 7,680              & 14,336             \\
-		\midrule
-		KeyGen total                                          & 12,288             & 18,944             & 29,696             \\
-		Sign total (expected)                                 & 69,632             & 122,726            & 141,926            \\
-		Verify total                                          & 14,336             & 22,016             & 33,792             \\
-		\bottomrule
-	\end{tabular}
-\end{table}
-
-
 \subsection{MQTT Protocol}
 
-Message Queuing Telemetry Transport (MQTT) is an OASIS standard messaging protocol that implements a publish-subscribe architecture with low overhead for resource-constrained IoT devices. MQTT specifies three Quality of Service levels: QoS 0 (fire-and-forget), QoS 1 (guaranteed delivery via PUBACK), and QoS 2 (exactly-once delivery). Native security provisions include username/password authentication and TLS integration, but the protocol does not provide built-in digital signature support.
+Message Queuing Telemetry Transport (MQTT) is a lightweight publish-subscribe protocol widely used in resource-constrained IoT systems. Its appeal comes from compact control packets, simple broker-mediated communication, and support for multiple Quality of Service levels. However, MQTT does not provide native digital signature fields, so application-layer mechanisms are required when message-level authenticity and non-repudiation are needed~\cite{Samandari2023,Rampazzo2023}. Recent work has also extended post-quantum protection to MQTT-family protocols such as MQTT-SN, further indicating protocol-level interest in lightweight deployment settings~\cite{BlancoRomero2024}.
 
-Integrating ML-DSA into MQTT environments introduces several implementation challenges. Signatures span 2,420--4,627 bytes, compared with 64 bytes for ECDSA, corresponding to a 38$\times$--72$\times$ increase. For typical IoT sensor data of 10--100 bytes, the signature dominates packet composition. On ARM Cortex-M4 platforms, signature generation requires hundreds of milliseconds and can therefore become a processing bottleneck that affects MQTT responsiveness.
+This design makes MQTT especially sensitive to the deployment cost of ML-DSA. In many telemetry applications, payloads are only a few tens of bytes, whereas ML-DSA signatures occupy several kilobytes. As a result, signature attachment can dominate packet size, increase transmission overhead, and add substantial signing and verification delay on low-power microcontrollers~\cite{Samandari2023,Rampazzo2023,Kim2025,BlancoRomero2024}.
 
-\section{System Architecture and Adaptive Protocol}\label{sec:architecture}
+These two background elements define the main evaluation dimensions of this paper. The computational structure of ML-DSA determines signing and verification cost on Cortex-M4 microcontrollers, while the large signature size directly affects MQTT packet expansion, transmission delay, and buffer pressure. Therefore, practical deployment must be assessed jointly at the cryptographic and protocol levels rather than from algorithm specifications alone~\cite{Khalid2019,Ghosh2019,pqm4-benchmarks}.
 
-\subsection{Hardware Platform}
+\section{Optimized Implementation and MQTT-Oriented Integration}\label{sec:architecture}
 
-The experimental platform uses STM32F407VG development boards based on ARM Cortex-M4F cores with a hardware floating-point unit operating at 168\,MHz. Each board provides 1\,MB of Flash memory for program storage and 192\,KB of SRAM for runtime operations. Network connectivity is provided by ESP32-WROOM-32 wireless modules connected through UART at 115,200 baud and configured for IEEE 802.11n WiFi with an integrated TCP/IP stack. Energy measurements are obtained with INA219 current sensor modules at 12-bit resolution and $\pm$0.8 mA precision.
+This section describes the experimental design that supports the first two contributions stated in Section~I: implementation-level optimization of ML-DSA on ARM Cortex-M4 microcontrollers and broker-compatible integration of ML-DSA signatures into MQTT communication. The focus is therefore placed on how the cryptographic implementation is organized on the target platform and how signed messages are carried through an unmodified publish-subscribe workflow.
 
-\subsection{Software Architecture}
+\subsection{System Overview}
 
-The software architecture follows a layered design that separates cryptographic operations, MQTT protocol handling, and application logic. The cryptographic layer uses the pqm4 reference library~\cite{pqm4-benchmarks} optimized for ARM Cortex-M4 and provides all three ML-DSA parameter sets with verified NIST test vector compliance. The library exports three primary API functions: \texttt{crypto\_sign\_keypair()} for key generation, \texttt{crypto\_sign()} for signature generation, and \texttt{crypto\_sign\_verify()} for validation.
+The experimental platform uses STM32F407VG development boards based on ARM Cortex-M4F cores operating at 168\,MHz, with 1\,MB of Flash and 192\,KB of SRAM. Network connectivity is provided by ESP32-WROOM-32 modules connected through UART at 115,200 baud and configured for IEEE 802.11n WiFi with an integrated TCP/IP stack. Within this platform, the publisher performs ML-DSA signing before MQTT transmission, the broker relays the resulting messages without modification, and the subscriber performs signature verification after message reception.
 
-The MQTT protocol layer uses the Eclipse Paho MQTT Embedded C client configured for QoS 1 operation with 5-s keepalive intervals and communicates with a Mosquitto MQTT broker. Configuration parameters include 256-byte receive buffers and 5,120-byte transmit buffers, which are sufficient for ML-DSA-87 signatures plus application data.
+The software stack follows a layered organization. The cryptographic layer provides ML-DSA key generation, signing, and verification through the pqm4 code base for ARM Cortex-M4 targets~\cite{pqm4-benchmarks}. The communication layer uses the Eclipse Paho MQTT Embedded C client to exchange QoS 1 messages with a Mosquitto broker. This separation allows implementation cost at the cryptographic layer and transmission overhead at the MQTT layer to be evaluated independently and then combined in the end-to-end measurements.
 
-\subsection{Signature Integration}
+\subsection{Implementation-Level Optimization}
 
-Signature integration adopts a payload-embedded architecture that maintains backward compatibility with standard MQTT brokers. The composite message format uses type-length-value (TLV) encoding and includes a 1-byte message type identifier, a 2-byte payload length, the variable-length application payload, a 1-byte signature algorithm identifier, a 2-byte key identifier, a 4-byte Unix timestamp for replay mitigation, a 2-byte signature length, and variable-length ML-DSA signature data (2,420--4,627 bytes).
+The implementation-level optimization targets the arithmetic kernels that dominate ML-DSA execution time on Cortex-M4 microcontrollers. As discussed in Section~\ref{sec:complexity}, these kernels are concentrated in NTT-based polynomial multiplication, coefficient-wise modular operations, and the surrounding reduction steps. Rather than changing the ML-DSA algorithm or parameter sets, the implementation focuses on reducing the cost of these dominant operations while preserving compatibility with the standardized design in FIPS 204~\cite{NIST-FIPS-204}.
 
-This format enables subscribers to parse messages without prior knowledge of the signature algorithm because the metadata fields are self-describing. The TLV structure also accommodates future cryptographic algorithm upgrades by extending the algorithm identifier without requiring protocol-level modifications.
+Three optimization directions are applied. First, critical arithmetic routines are mapped to hand-tuned ARM Cortex-M4 instructions in order to improve instruction scheduling and reduce unnecessary memory traffic in repeated polynomial operations. Second, modular reduction is organized around Montgomery-domain computation so that expensive division-like operations are avoided in the main arithmetic path. Third, reduction is deferred when intermediate value ranges permit it, which lowers the number of normalization steps inside NTT butterfly sequences. Together, these changes target the implementation bottlenecks that are most relevant in resource-constrained devices.
 
-\subsection{Cryptographic Optimization}
+The optimized implementation retains the standard signing interface required by the communication layer. Key generation is invoked through \texttt{crypto\_sign\_keypair()}, signatures are generated through \texttt{crypto\_sign()}, and validation is performed through \texttt{crypto\_sign\_verify()}. This interface preserves a clean boundary between cryptographic processing and MQTT message handling, which is important for the system-level evaluation in Section~\ref{sec:evaluation}.
 
-The implementation incorporates optimization techniques targeting NTT operations and modular arithmetic. NTT operations dominate the computational cost and account for 60--70\% of total signing cycles. The main optimizations are as follows:
+\subsection{MQTT-Oriented Signature Integration}
 
-\textbf{Assembly Optimization}: Hand-optimized ARM assembly exploits instruction-level parallelism and efficient use of the \texttt{UMULL} instruction for 32$\times$32$\rightarrow$64-bit multiplication.
+MQTT does not define native fields for application-layer digital signatures. To address this limitation without modifying broker behavior, a payload-embedded integration method is used. The publisher constructs a composite application payload that contains both the original telemetry data and the ML-DSA authentication fields, and the resulting byte string is transmitted as a standard MQTT PUBLISH payload. Because the broker handles the packet as opaque application data, no protocol extension or broker-side parsing logic is required.
 
-\textbf{Montgomery Reduction}: Replacing division-based modular reduction with multiplication-based techniques removes expensive division operations and reduces the corresponding overhead by 25--35\%.
+The composite message uses a type-length-value format consisting of a message type field, payload length, application payload, signature algorithm identifier, key identifier, timestamp, signature length, and the ML-DSA signature itself. This structure allows the subscriber to recover the application data, identify the verification algorithm, and validate freshness before signature verification. It also keeps the integration compatible with all three standardized ML-DSA parameter sets, whose signature lengths differ substantially.
 
-\textbf{Lazy Reduction}: Deferring modular reduction across multiple butterfly operations reduces the reduction frequency and improves NTT latency by 15--25\%.
+This integration design is intentionally MQTT-oriented rather than MQTT-modifying. The publish-subscribe semantics, QoS handling, topic structure, and broker operation remain unchanged, while signature processing is confined to the endpoints. As a result, the measured overhead in Section~\ref{sec:evaluation} can be interpreted directly as the cost of deploying ML-DSA over an otherwise standard MQTT workflow.
 
-Together, these optimizations improve performance by 40--50\% relative to the reference implementations.
 
 \section{Experimental Evaluation}\label{sec:evaluation}
 
