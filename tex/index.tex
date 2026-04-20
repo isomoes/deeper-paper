@@ -180,33 +180,142 @@ These two background elements define the main evaluation dimensions of this pape
 
 \section{Optimized Implementation and MQTT-Oriented Integration}\label{sec:architecture}
 
-This section describes the software implementation used in this work and the interface boundary through which the resulting signatures can be carried in MQTT communication. The current repository focuses on the cryptographic layer, so the discussion is centered on the organization of the ML-DSA code, the implementation choices used to reduce software overhead, and the serialization interface that enables endpoint-side MQTT integration without changing the signature algorithm itself.
+This section describes the implementation method used to realize the first two contributions stated in Section~I. The emphasis is placed on the algorithmic structure of the ML-DSA software, the implementation choices used to reduce the cost of the dominant arithmetic kernels, and the application-layer framing by which the resulting signatures can be carried in MQTT communication.
 
-\subsection{Software Overview}
+\subsection{Algorithmic Overview}
 
-The implementation in the \texttt{code/} directory follows a layered Rust architecture that maps directly to the FIPS 204 algorithm structure. A generic module-lattice foundation in \texttt{module\_lattice/} provides finite-field arithmetic, polynomial and vector containers, and byte-packing utilities. On top of this base, the ML-DSA-specific modules \texttt{algebra.rs}, \texttt{ntt.rs}, \texttt{sampling.rs}, \texttt{encode.rs}, \texttt{hint.rs}, and \texttt{param.rs} implement the arithmetic, sampling, encoding, and parameter logic required by the three standardized parameter sets. The protocol flow is then orchestrated in \texttt{lib.rs}, which provides key generation, signing, and verification.
+For a parameter set with matrix dimensions $(k,\ell)$, the implementation follows the standard ML-DSA flow of key generation, signing, and verification over the ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$. From an initial seed $\xi$, the internal seeds $(\rho,\rho',K)$ are derived and used to generate the public matrix $\mathbf{A}$ and the short secret vectors $\mathbf{s}_1$ and $\mathbf{s}_2$. In transform notation, the key-generation stage is summarized as
 
-This organization separates algebraic kernels from protocol logic. The core state is represented by the typed structures \texttt{SigningKey<P>}, \texttt{VerifyingKey<P>}, and \texttt{Signature<P>}, where the generic parameter \texttt{P} selects ML-DSA-44, ML-DSA-65, or ML-DSA-87 at compile time. Key generation is implemented through \texttt{KeyGen::from\_seed()}, signing is centered on \texttt{SigningKey::sign\_internal()}, and verification is centered on \texttt{VerifyingKey::verify\_internal()}. The same code path is therefore reused across parameter sets, while the parameter-dependent dimensions, sampling bounds, and encoded lengths are resolved statically by the type system.
+\begin{align}
+\hat{\mathbf{A}} &= \mathsf{ExpandA}(\rho), \\
+\mathbf{s}_1 &= \mathsf{ExpandS}(\rho',\eta,0), \\
+\mathbf{s}_2 &= \mathsf{ExpandS}(\rho',\eta,\ell).
+\end{align}
+
+\begin{equation}
+\mathbf{t} = \operatorname{NTT}^{-1}\!\left(\hat{\mathbf{A}}\hat{\mathbf{s}}_1\right) + \mathbf{s}_2,
+\qquad
+\hat{\mathbf{s}}_1 = \operatorname{NTT}(\mathbf{s}_1),
+\end{equation}
+
+followed by $\mathsf{Power2Round}(\mathbf{t}) = (\mathbf{t}_1,\mathbf{t}_0)$. This decomposition separates the public component $\mathbf{t}_1$ from the low-order private component $\mathbf{t}_0$ and prepares the state used in subsequent signing and verification.
+
+To reduce repeated preprocessing, the implementation keeps the long-lived transformed state
+
+\begin{equation}
+\hat{\mathbf{A}}, \quad \hat{\mathbf{s}}_1, \quad \hat{\mathbf{s}}_2, \quad \hat{\mathbf{t}}_0, \quad \widehat{2^d\mathbf{t}_1}
+\end{equation}
+
+available for reuse across signature generation and verification. This choice is especially important because signing is iterative and repeatedly invokes the same matrix--vector and challenge-related polynomial products.
 
 \subsection{Implementation-Level Optimization}
 
-The implementation-level optimization is applied at the software-structure and arithmetic-kernel levels rather than by changing the ML-DSA algorithm itself. As discussed in Section~\ref{sec:complexity}, the dominant cost arises from repeated polynomial transforms, modular multiplication, coefficient decomposition, and the rejection-sampling loop in signing. The implementation in \texttt{code/src/} therefore concentrates on reducing repeated work in these paths while preserving the standardized ML-DSA procedure defined in FIPS 204~\cite{NIST-FIPS-204}.
+The implementation-level optimization is applied without changing the ML-DSA algorithm or parameter sets. As discussed in Section~\ref{sec:complexity}, the dominant cost arises from repeated transforms, modular multiplication, coefficient decomposition, and the rejection-sampling loop in signing. The optimization therefore targets these paths directly while preserving the standardized procedure in FIPS 204~\cite{NIST-FIPS-204}.
 
-The first optimization direction is aggressive specialization of the Number Theoretic Transform (NTT) path. The forward and inverse transforms in \texttt{ntt.rs} are expressed as eight fixed butterfly layers, and each layer is implemented with const-generic parameters that make the loop bounds compile-time constants. This removes the need for dynamically computed traversal steps in the transform core and keeps the transform schedule explicit. In addition, the powers of the primitive root used by the butterflies are precomputed once in the constant table \texttt{ZETA\_POW\_BITREV}. As a result, polynomial multiplication follows the standard but efficient sequence of two forward transforms, pointwise multiplication in the transform domain, and one inverse transform, avoiding the quadratic cost of schoolbook multiplication for degree-256 polynomials.
+The first optimization direction is specialization of the Number Theoretic Transform (NTT) path. Since the polynomial degree is fixed at $n=256$, the transform always consists of eight radix-2 butterfly layers. The basic butterfly update can be written as
 
-The second optimization direction is the removal of expensive division from the main arithmetic path. In \texttt{module\_lattice/algebra.rs}, field multiplication uses a Barrett-reduction routine with precomputed constants rather than hardware division. In \texttt{algebra.rs}, the decomposition step further replaces ordinary division by a constant-time division routine for the compile-time modulus $2\gamma_2$. This matters because decomposition, \texttt{HighBits}, and \texttt{LowBits} are exercised repeatedly during signing and verification. By reducing coefficient values through fixed multipliers, shifts, and conditional subtraction, the implementation keeps the inner arithmetic compact and timing behavior more regular.
+\begin{equation}
+(u,v) \mapsto (u + \zeta_i v,\; u - \zeta_i v) \Mod{q},
+\label{eq:ntt-butterfly}
+\end{equation}
 
-The third optimization direction is reuse of transformed state across protocol operations. The \texttt{SigningKey<P>} structure stores not only the secret vectors \texttt{s\_1}, \texttt{s\_2}, and \texttt{t\_0}, but also their NTT-domain forms \texttt{s1\_hat}, \texttt{s2\_hat}, and \texttt{t0\_hat}, together with the expanded public matrix \texttt{A\_hat}. These values are derived once during key generation or key decoding and are then reused throughout the rejection-sampling loop. Consequently, each signing iteration only transforms the fresh mask polynomial \texttt{y} and the sampled challenge \texttt{c}, instead of recomputing NTT representations of long-lived key material. The verification key applies the same idea by caching \texttt{A\_hat}, the scaled transform \texttt{t1\_2d\_hat}, and the public-key hash \texttt{tr}, so that verification avoids repeated expansion and preprocessing.
+where $\zeta_i$ denotes the corresponding twiddle factor. By using a fixed transform schedule and precomputing the required twiddle sequence, the transform avoids unnecessary runtime control overhead. This organization is important because polynomial multiplication is reduced to
 
-The fourth optimization direction is compile-time sizing and compact serialization. The parameter logic in \texttt{param.rs} computes polynomial, vector, key, and signature sizes at compile time, and the encoding modules pack coefficients into fixed-size byte arrays without dynamic allocation. The low-level \texttt{flatten} and \texttt{unflatten} utilities are used to move between structured polynomial arrays and contiguous encoded buffers with minimal overhead. This choice is important not only for memory predictability but also for integration, because the outputs of \texttt{Signature::encode()}, \texttt{VerifyingKey::encode()}, and \texttt{SigningKey::to\_expanded()} already have transport-ready byte representations whose lengths are known for each parameter set.
+\begin{equation}
+\widehat{f g} = \hat{f} \odot \hat{g},
+\label{eq:pointwise-mul}
+\end{equation}
+
+where $\odot$ denotes coefficient-wise multiplication in the NTT domain. Equation~\eqref{eq:pointwise-mul} replaces quadratic-time schoolbook multiplication with the standard NTT-based evaluation path.
+
+The second optimization direction is removal of division from the main arithmetic path. Modular reduction is organized around Barrett-style reciprocal multiplication,
+
+\begin{equation}
+\operatorname{red}_q(x) = x - \left\lfloor \frac{x\mu_q}{2^{\kappa}} \right\rfloor q,
+\qquad
+\mu_q = \left\lfloor \frac{2^{\kappa}}{q} \right\rfloor,
+\label{eq:barrett}
+\end{equation}
+
+which replaces hardware division with multiplication, bit shifting, and a final correction step. A related reciprocal-based procedure is used when the decomposition stage requires quotient extraction with respect to $2\gamma_2$. This choice is relevant because $\mathsf{Decompose}$, $\mathsf{HighBits}$, and $\mathsf{LowBits}$ are called repeatedly in both signing and verification.
+
+The third optimization direction is reuse of transformed state across iterations of the signing loop. For each counter value $\kappa$, only the fresh masking vector $\mathbf{y}$ and challenge polynomial $c$ are transformed online. The main per-iteration computations are
+
+\begin{align}
+\mathbf{y} &= \mathsf{ExpandMask}(\rho'',\kappa), \\
+\mathbf{w} &= \operatorname{NTT}^{-1}\!\left(\hat{\mathbf{A}}\hat{\mathbf{y}}\right), \\
+\mathbf{z} &= \mathbf{y} + \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{s}}_1\right), \\
+\mathbf{r}_0 &= \mathsf{LowBits}\!\left(\mathbf{w} - \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{s}}_2\right)\right),
+\label{eq:sign-core}
+\end{align}
+
+where $\hat{\mathbf{y}} = \operatorname{NTT}(\mathbf{y})$ and $\hat{c} = \operatorname{NTT}(c)$. Once the norm constraints for $\mathbf{z}$ and $\mathbf{r}_0$ are satisfied, the hint-generation step is computed as
+
+\begin{align}
+\mathbf{u} &= \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{t}}_0\right), \\
+\mathbf{h} &= \mathsf{MakeHint}\!\left(-\mathbf{u},\; \mathbf{w} - \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{s}}_2\right) + \mathbf{u}\right).
+\label{eq:hint-step}
+\end{align}
+
+Because $\hat{\mathbf{A}}$, $\hat{\mathbf{s}}_1$, $\hat{\mathbf{s}}_2$, and $\hat{\mathbf{t}}_0$ are reused, the rejection-sampling loop does not repeatedly transform long-lived key-dependent state. This optimization directly reduces the overhead of the most expensive operation in ML-DSA deployment.
+
+Algorithm~\ref{alg:opt-sign} summarizes the optimized signing flow. The main implementation feature is that only the ephemeral values generated within the current signing attempt are transformed online, while the matrix and key-dependent NTT-domain state are reused across iterations.
+
+\begin{algorithm}[t]
+\caption{Cached-Transform ML-DSA Signing Flow}
+\label{alg:opt-sign}
+\small
+\KwIn{$\mu$, $\rho''$, $\hat{\mathbf{A}}$, $\hat{\mathbf{s}}_1$, $\hat{\mathbf{s}}_2$, $\hat{\mathbf{t}}_0$}
+\KwOut{$\sigma=(\tilde{c},\mathbf{z},\mathbf{h})$}
+\For{$\kappa \gets 0,\ell,2\ell,\ldots$}{
+    $\mathbf{y} \gets \mathsf{ExpandMask}(\rho'',\kappa)$; $\hat{\mathbf{y}} \gets \operatorname{NTT}(\mathbf{y})$\;
+    $\mathbf{w} \gets \operatorname{NTT}^{-1}(\hat{\mathbf{A}}\hat{\mathbf{y}})$; $\mathbf{w}_1 \gets \mathsf{HighBits}(\mathbf{w})$\;
+    $\tilde{c} \gets H(\mu \parallel \mathsf{Encode}(\mathbf{w}_1))$; $c \gets \mathsf{SampleInBall}(\tilde{c})$\;
+    $\hat{c} \gets \operatorname{NTT}(c)$\;
+    $\mathbf{a} \gets \operatorname{NTT}^{-1}(\hat{c}\,\hat{\mathbf{s}}_1)$; $\mathbf{b} \gets \operatorname{NTT}^{-1}(\hat{c}\,\hat{\mathbf{s}}_2)$\;
+    $\mathbf{z} \gets \mathbf{y} + \mathbf{a}$; $\mathbf{r}_0 \gets \mathsf{LowBits}(\mathbf{w}-\mathbf{b})$\;
+    \If{$\|\mathbf{z}\|_{\infty} \geq \gamma_1-\beta$ \textbf{or} $\|\mathbf{r}_0\|_{\infty} \geq \gamma_2-\beta$}{
+        continue\;
+    }
+    $\mathbf{u} \gets \operatorname{NTT}^{-1}(\hat{c}\,\hat{\mathbf{t}}_0)$\;
+    $\mathbf{h} \gets \mathsf{MakeHint}(-\mathbf{u},\mathbf{w}-\mathbf{b}+\mathbf{u})$\;
+    \If{$\|\mathbf{u}\|_{\infty} \geq \gamma_2$ \textbf{or} $\|\mathbf{h}\|_1 > \omega$}{
+        continue\;
+    }
+    \Return{$(\tilde{c},\mathbf{z},\mathbf{h})$}\;
+}
+\end{algorithm}
+
+The fourth optimization direction is compact fixed-length serialization. For each parameter set, public keys, private keys, and signatures are encoded as contiguous byte strings with predetermined lengths. In particular,
+
+\begin{align}
+|\sigma| &\in \{2420,\ 3309,\ 4627\}\ \text{bytes}, \\
+|pk| &\in \{1312,\ 1952,\ 2592\}\ \text{bytes},
+\label{eq:enc-len}
+\end{align}
+
+for ML-DSA-44, ML-DSA-65, and ML-DSA-87, respectively. This property is useful for constrained implementations because it simplifies buffer management and provides a direct interface to transport protocols that treat the signature as opaque application data.
 
 \subsection{MQTT-Oriented Signature Integration}
 
-MQTT does not define native fields for application-layer digital signatures. Although the current repository does not embed an MQTT client or broker, the exposed ML-DSA interfaces are already suitable for broker-compatible integration because all cryptographic outputs are represented as ordinary byte arrays. On the publisher side, application data can be signed through the \texttt{SigningKey<P>} API, and the resulting signature can be serialized through \texttt{Signature::encode()}. On the subscriber side, the received bytes can be reconstructed through \texttt{Signature::decode()} or the slice-based conversion interface and then checked with \texttt{VerifyingKey<P>}.
+MQTT does not define native fields for application-layer digital signatures, so signature transport is handled by payload encapsulation rather than protocol modification. Let $m$ denote the application payload and let $\sigma$ denote the encoded ML-DSA signature. A broker-compatible signed message can be represented as
 
-This organization keeps the cryptographic core transport-independent while still fitting the needs of MQTT deployment. An MQTT broker forwards payload bytes without interpreting their internal structure, so the application layer can attach the encoded signature, a key identifier, and any freshness metadata to the published payload without requiring broker-side changes. The important implementation property is that the byte lengths of signatures and keys are parameter-set specific but fixed, which simplifies endpoint buffer sizing and application-level framing. Therefore, the code in \texttt{code/} provides the cryptographic boundary needed for MQTT-oriented deployment even though the message-format policy remains outside the signature library itself.
+\begin{align}
+\mathcal{F} ={}& \mathsf{type} \parallel \mathsf{len}(m) \parallel m \parallel \mathsf{alg} \parallel \\
+& \mathsf{kid} \parallel \mathsf{ts} \parallel \mathsf{len}(\sigma) \parallel \sigma.
+\label{eq:mqtt-frame}
+\end{align}
 
-This integration design is intentionally MQTT-oriented rather than MQTT-modifying. Publish-subscribe semantics, topic structure, and broker behavior remain unchanged, while signing and verification are confined to the endpoints that already hold the ML-DSA key material. The same encoded interface can also support different application-layer framing policies, which makes the current implementation suitable as the cryptographic substrate for subsequent MQTT experiments.
+where $\mathsf{alg}$ is the algorithm identifier, $\mathsf{kid}$ is the key identifier, and $\mathsf{ts}$ is a freshness field such as a timestamp or sequence value. The signed content can be bound to these metadata fields by defining the authenticated byte string as
+
+\begin{equation}
+m^{\star} = m \parallel \mathsf{alg} \parallel \mathsf{kid} \parallel \mathsf{ts}.
+\label{eq:auth-bytes}
+\end{equation}
+
+At the publisher, the endpoint computes $\sigma = \mathsf{Sign}(sk,m^{\star})$ and places the resulting byte string into the MQTT payload. At the subscriber, the same frame is parsed, freshness and key selection are checked, and verification is performed by evaluating $\mathsf{Verify}(pk,m^{\star},\sigma)$. Because the broker processes the payload as opaque data, the publish-subscribe semantics, topic handling, and broker forwarding logic remain unchanged.
+
+This integration design is intentionally MQTT-oriented rather than MQTT-modifying. The main protocol effect is therefore limited to payload expansion and endpoint-side cryptographic delay, which can be analyzed independently of any broker implementation changes.
 
 
 \section{Experimental Evaluation}\label{sec:evaluation}
