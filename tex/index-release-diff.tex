@@ -1,6 +1,6 @@
 \documentclass[final, twoside]{IEEEtran} % regular paper
 %DIF LATEXDIFF DIFFERENCE FILE
-%DIF DEL v1.19
+%DIF DEL v1.20
 %DIF ADD HEAD
 \setlength\columnwidth{0.5\textwidth} % this must be set in one-column mode
 \usepackage{booktabs}
@@ -209,15 +209,39 @@
 
 \section{Introduction}
 
-\IEEEPARstart{T}{he} emergence of quantum computing undermines widely deployed public-key cryptographic primitives and makes migration to post-quantum standards a practical requirement rather than a long-term theoretical concern~\cite{Khalid2019}. This transition is especially important for Internet of Things (IoT) systems, where large numbers of distributed devices must operate for long periods under strict constraints on computation, memory, energy, and communication bandwidth.
+\IEEEPARstart{T}{he} emergence of quantum computing undermines widely deployed public-key cryptographic primitives and makes migration to post-quantum standards a practical requirement rather than a long-term theoretical concern~\DIFdelbegin \DIFdel{\mbox{%DIFAUXCMD
+\cite{Khalid2019}}\hskip0pt%DIFAUXCMD
+}\DIFdelend \DIFaddbegin \DIFadd{\mbox{%DIFAUXCMD
+\cite{Khalid2019,Dinu2025,Egbuagha2025}}\hskip0pt%DIFAUXCMD
+}\DIFaddend . This transition is especially important for Internet of Things (IoT) systems, where large numbers of distributed devices must operate for long periods under strict constraints on computation, memory, energy, and communication bandwidth.
 
 \IEEEpubidadjcol
 
-Among post-quantum primitives, ML-DSA (Module-Lattice-Based Digital Signature Algorithm) has been standardized by the National Institute of Standards and Technology (NIST) in FIPS 204~\cite{NIST-FIPS-204} as the primary digital signature scheme for post-quantum deployment. ML-DSA is particularly relevant in settings that require public verifiability, non-repudiation, auditability, and compatibility with certificate-based trust models. These properties, however, come with substantial implementation cost. ML-DSA signatures span 2,420--4,627 bytes across standardized parameter sets, which is roughly 30--70$\times$ larger than 64-byte ECDSA signatures~\cite{HwangKim2024}. In addition, the underlying lattice-based computations impose significantly higher processing overhead on low-power devices~\cite{Ghosh2019}.
+Among post-quantum primitives, ML-DSA (Module-Lattice-Based Digital Signature Algorithm) has been standardized by the National Institute of Standards and Technology (NIST) in FIPS 204~\cite{NIST-FIPS-204} as the primary digital signature scheme for post-quantum deployment. ML-DSA is particularly relevant in settings that require public verifiability, non-repudiation, auditability, and compatibility with certificate-based trust models. \DIFaddbegin \DIFadd{Recent work has therefore focused on implementation portability across embedded software, vectorized ARM processors, and hardware accelerators~\mbox{%DIFAUXCMD
+\cite{Barrett2023,Wei2025,Norga2025}}\hskip0pt%DIFAUXCMD
+. }\DIFaddend These properties, however, come with substantial implementation cost. ML-DSA signatures span 2,420--4,627 bytes across standardized parameter sets, which is roughly 30--70$\times$ larger than 64-byte ECDSA signatures~\DIFdelbegin \DIFdel{\mbox{%DIFAUXCMD
+\cite{HwangKim2024}}\hskip0pt%DIFAUXCMD
+}\DIFdelend \DIFaddbegin \DIFadd{\mbox{%DIFAUXCMD
+\cite{NIST-FIPS-204}}\hskip0pt%DIFAUXCMD
+}\DIFaddend . In addition, the underlying lattice-based computations impose significantly higher processing overhead on low-power devices~\DIFdelbegin \DIFdel{\mbox{%DIFAUXCMD
+\cite{Ghosh2019}}\hskip0pt%DIFAUXCMD
+}\DIFdelend \DIFaddbegin \DIFadd{\mbox{%DIFAUXCMD
+\cite{Ghosh2019,Benchmark2022,pqm4-benchmarks}}\hskip0pt%DIFAUXCMD
+}\DIFaddend .
 
 These costs become more critical in MQTT-based IoT environments. MQTT is widely adopted because its publish-subscribe architecture and lightweight packet format suit resource-constrained sensing and control applications. The same design choices, however, also make the protocol sensitive to cryptographic expansion. When multi-kilobyte signatures are attached to short telemetry payloads, message size, transmission delay, and signing latency can dominate end-to-end performance. As a result, the feasibility of deploying standardized post-quantum signatures in practical MQTT workflows cannot be inferred from algorithm specifications alone and must be evaluated at the system level.
 
-Existing studies have examined post-quantum signatures from several complementary perspectives. Embedded benchmarking studies have reported the cost of Dilithium and ML-DSA on ARM Cortex-M platforms~\cite{Banegas2021,pqm4-benchmarks}. MQTT-focused studies have shown that post-quantum authentication can substantially increase latency and payload size~\cite{Samandari2023,Rampazzo2023}, and some analyses have therefore emphasized KEM-based alternatives for constrained devices~\cite{Kim2025}. Nevertheless, a focused evaluation of standardized ML-DSA parameter sets within a complete MQTT publish-subscribe workflow on Cortex-M4-class microcontrollers remains limited. In particular, the relationship among cryptographic cost, message expansion, and protocol-level delay requires clearer empirical characterization.
+Existing studies have examined post-quantum signatures from several complementary perspectives. Embedded benchmarking \DIFaddbegin \DIFadd{and optimization }\DIFaddend studies have reported the cost of Dilithium and ML-DSA on ARM Cortex-M platforms \DIFdelbegin \DIFdel{~\mbox{%DIFAUXCMD
+\cite{Banegas2021,pqm4-benchmarks}}\hskip0pt%DIFAUXCMD
+. }\DIFdelend \DIFaddbegin \DIFadd{and related microcontrollers, including Cortex-M3, Cortex-M4, Cortex-M7, and 8-bit AVR targets~\mbox{%DIFAUXCMD
+\cite{Banegas2021,Benchmark2022,pqm4-benchmarks,Barrett2023}}\hskip0pt%DIFAUXCMD
+. Recent deployment-oriented work has also highlighted migration engineering and implementation-security issues for ML-DSA, including fault-attack exposure and countermeasure requirements~\mbox{%DIFAUXCMD
+\cite{Li2024,Dinu2025}}\hskip0pt%DIFAUXCMD
+. At the protocol level, }\DIFaddend MQTT-focused studies have shown that post-quantum authentication can substantially increase latency and payload size~\cite{Samandari2023,Rampazzo2023}, \DIFdelbegin \DIFdel{and some analyses have therefore emphasized }\DIFdelend \DIFaddbegin \DIFadd{protocol adaptations have been explored for MQTT-SN and CoAP~\mbox{%DIFAUXCMD
+\cite{BlancoRomero2024}}\hskip0pt%DIFAUXCMD
+, and }\DIFaddend KEM-based alternatives \DIFdelbegin \DIFdel{for constrained devices}\DIFdelend \DIFaddbegin \DIFadd{have been proposed for highly constrained MQTT nodes}\DIFaddend ~\cite{Kim2025}. \DIFaddbegin \DIFadd{Broader reviews of protocol migration likewise identify messaging systems as an area where deployment evidence remains limited~\mbox{%DIFAUXCMD
+\cite{Egbuagha2025}}\hskip0pt%DIFAUXCMD
+. }\DIFaddend Nevertheless, a focused evaluation of standardized ML-DSA parameter sets within a complete MQTT publish-subscribe workflow on Cortex-M4-class microcontrollers remains limited. In particular, the relationship among cryptographic cost, message expansion, and protocol-level delay requires clearer empirical characterization.
 
 This work addresses that gap through an empirical study of ML-DSA integration in MQTT-based IoT systems on ARM Cortex-M4 microcontrollers. The study is organized as a connected chain from implementation optimization to protocol integration and then to system-level evaluation. The main contributions are as follows:
 
@@ -229,21 +253,25 @@ This work addresses that gap through an empirical study of ML-DSA integration in
 \item \textbf{System-Level Evaluation and Deployment Analysis}: Cycle-accurate and end-to-end experiments quantify computational overhead, message expansion, latency, throughput, and memory cost across all three standardized ML-DSA parameter sets relative to an ECDSA P-256 baseline, providing guidance for constrained IoT deployment.
 \end{enumerate}
 
-The remainder of this paper is organized as follows: Section~\ref{sec:related} presents technical background. Section~\ref{sec:architecture} describes the \DIFdelbegin \DIFdel{system architecture}\DIFdelend \DIFaddbegin \DIFadd{optimized implementation and MQTT-oriented integration method}\DIFaddend . Section~\ref{sec:evaluation} presents experimental evaluation. Section~\ref{sec:conclusion} concludes with implications for deployment.
+The remainder of this paper is organized as follows: Section~\ref{sec:related} presents technical background. Section~\ref{sec:architecture} describes the optimized implementation and MQTT-oriented integration method. Section~\ref{sec:evaluation} presents experimental evaluation. Section~\ref{sec:conclusion} concludes with implications for deployment.
 
 \section{Background}\label{sec:related}
 
-\subsection{ML-DSA \DIFdelbegin \DIFdel{Algorithm }\DIFdelend and \DIFdelbegin \DIFdel{Complexity Analysis}\DIFdelend \DIFaddbegin \DIFadd{Deployment-Relevant Properties}\DIFaddend }\label{sec:complexity}
+\subsection{ML-DSA and Deployment-Relevant Properties}\label{sec:complexity}
 
-ML-DSA is NIST's standardized post-quantum digital signature scheme \DIFdelbegin \DIFdel{(}\DIFdelend \DIFaddbegin \DIFadd{in }\DIFaddend FIPS 204~\cite{NIST-FIPS-204} \DIFdelbegin \DIFdel{) }\DIFdelend and is derived from CRYSTALS-Dilithium. \DIFdelbegin \DIFdel{The algorithm follows the Fiat-Shamir with Aborts paradigm over polynomial rings $R_q = \mathbb{Z}_q[X]/(X^{256} + 1)$ }\DIFdelend \DIFaddbegin \DIFadd{It is constructed over module lattices and uses polynomial arithmetic in the ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$ }\DIFaddend with $q = 8380417$\DIFdelbegin \DIFdel{, and its security is based on the Module Learning With Errors (MLWE) and Module Short Integer Solution (MSIS) assumptions. Polynomial arithmetic is implemented through }\DIFdelend \DIFaddbegin \DIFadd{. On constrained processors, the dominant implementation cost comes from repeated }\DIFaddend Number Theoretic Transform (NTT)\DIFdelbegin \DIFdel{operations with $O(n \log n)$ complexity}\DIFdelend \DIFaddbegin \DIFadd{-based polynomial operations and modular arithmetic, which have been identified as the main performance bottlenecks in embedded post-quantum implementations~\mbox{%DIFAUXCMD
+ML-DSA is NIST's standardized post-quantum digital signature scheme in FIPS 204~\cite{NIST-FIPS-204} and is derived from CRYSTALS-Dilithium. It is constructed over module lattices and uses polynomial arithmetic in the ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$ with $q = 8380417$. On constrained processors, the dominant implementation cost comes from repeated Number Theoretic Transform (NTT)-based polynomial operations and modular arithmetic, which have been identified as the main performance bottlenecks in embedded post-quantum implementations \DIFdelbegin \DIFdel{~\mbox{%DIFAUXCMD
 \cite{pqm4-benchmarks,HwangKim2024}}\hskip0pt%DIFAUXCMD
+}\DIFdelend \DIFaddbegin \DIFadd{across Cortex-M and related platforms~\mbox{%DIFAUXCMD
+\cite{Benchmark2022,pqm4-benchmarks,Barrett2023,Wei2025}}\hskip0pt%DIFAUXCMD
 }\DIFaddend .
 
-\DIFaddbegin \DIFadd{For this paper, two }\DIFaddend ML-DSA \DIFdelbegin \DIFdel{uses rejection sampling, so signature generation is iterative. The expected iteration counts are 4.25, 5.1, and 3.85 for ML-DSA-44}\DIFdelend \DIFaddbegin \DIFadd{properties are the most relevant. First, the standardized signatures are much larger than classical signatures, which directly affects message expansion in lightweight IoT protocols~\mbox{%DIFAUXCMD
+For this paper, two ML-DSA properties are the most relevant. First, the standardized signatures are much larger than classical signatures, which directly affects message expansion in lightweight IoT protocols~\DIFdelbegin \DIFdel{\mbox{%DIFAUXCMD
 \cite{NIST-FIPS-204,HwangKim2024}}\hskip0pt%DIFAUXCMD
-. Second, signature generation uses rejection sampling and is therefore iterative}\DIFaddend , \DIFdelbegin \DIFdel{ML-DSA-65, and ML-DSA-87, respectively, which directly affects timing predictability. NIST standardizes }\DIFdelend \DIFaddbegin \DIFadd{which increases latency and introduces runtime variability~\mbox{%DIFAUXCMD
+}\DIFdelend \DIFaddbegin \DIFadd{\mbox{%DIFAUXCMD
 \cite{NIST-FIPS-204}}\hskip0pt%DIFAUXCMD
-. NIST defines }\DIFaddend three parameter sets with \DIFdelbegin \DIFdel{distinct security-performance }\DIFdelend \DIFaddbegin \DIFadd{different security and resource }\DIFaddend trade-offs\DIFdelbegin \DIFdel{. }\DIFdelend \DIFaddbegin \DIFadd{, summarized in }\DIFaddend Table~\ref{tab:mldsa-params}\DIFdelbegin \DIFdel{summarizes the main implementation characteristics}\DIFdelend .
+}\DIFaddend . Second, signature generation uses rejection sampling and is therefore iterative, which increases latency and introduces runtime variability~\cite{NIST-FIPS-204}. \DIFaddbegin \DIFadd{Recent migration and implementation studies further indicate that practical deployment must account not only for raw performance but also for side-channel and fault resilience during the transition from classical signatures to ML-DSA~\mbox{%DIFAUXCMD
+\cite{Li2024,Dinu2025}}\hskip0pt%DIFAUXCMD
+. }\DIFaddend NIST defines three parameter sets with different security and resource trade-offs, summarized in Table~\ref{tab:mldsa-params}.
 
 \begin{table}[h]
 	\centering
@@ -262,279 +290,204 @@ ML-DSA is NIST's standardized post-quantum digital signature scheme \DIFdelbegin
 	\end{tabular}
 \end{table}
 
-\DIFdelbegin \DIFdel{From a computational perspective, ML-DSA is dominated by polynomial arithmetic over $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$ with $q = 8{,}380{,}417$. Let $n = 256$ denote the polynomial degree, and let $(k, \ell)$ denote the matrix dimensions for a given parameter set. The discussion below highlights only the dominant operations neededto interpret the measured performance results}\DIFdelend \DIFaddbegin \subsection{\DIFadd{MQTT Protocol}}
+\subsection{MQTT Protocol}
 
-\DIFadd{Message Queuing Telemetry Transport (MQTT) is a lightweight publish-subscribe protocol widely used in resource-constrained IoT systems. Its appeal comes from compact control packets, simple broker-mediated communication, and support for multiple Quality of Service levels. However, MQTT does not provide native digital signature fields, so application-layer mechanisms are required when message-level authenticity and non-repudiation are needed~\mbox{%DIFAUXCMD
-\cite{Samandari2023,Rampazzo2023}}\hskip0pt%DIFAUXCMD
-. Recent work has also extended post-quantum protection to MQTT-family protocols such as MQTT-SN, further indicating protocol-level interest in lightweight deployment settings~\mbox{%DIFAUXCMD
+Message Queuing Telemetry Transport (MQTT) is a lightweight publish-subscribe protocol widely used in resource-constrained IoT systems. Its appeal comes from compact control packets, simple broker-mediated communication, and support for multiple Quality of Service levels. However, MQTT does not provide native digital signature fields, so application-layer mechanisms are required when message-level authenticity and non-repudiation are needed~\cite{Samandari2023,Rampazzo2023}. Recent work has also extended post-quantum protection to MQTT-family protocols such as MQTT-SN, \DIFdelbegin \DIFdel{further indicating protocol-level interest in lightweight deployment settings~\mbox{%DIFAUXCMD
 \cite{BlancoRomero2024}}\hskip0pt%DIFAUXCMD
+}\DIFdelend \DIFaddbegin \DIFadd{explored KEM-oriented MQTT designs for 8-bit sensor nodes, and identified messaging protocols as an active but still sparse part of the broader PQC migration literature~\mbox{%DIFAUXCMD
+\cite{BlancoRomero2024,Kim2025,Egbuagha2025}}\hskip0pt%DIFAUXCMD
 }\DIFaddend .
 
-\DIFdelbegin \subsubsection{\DIFdel{Number Theoretic Transform}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The Number Theoretic Transform (NTT) reduces polynomial multiplication from $O(n^2)$ to $O(n \log n)$ and therefore dominates the arithmetic }\DIFdelend \DIFaddbegin \DIFadd{This design makes MQTT especially sensitive to the deployment }\DIFaddend cost of ML-DSA. \DIFdelbegin \DIFdel{For $n = 256$, each forward or inverse transform requires 1, 024 modular multiplications and 2,048 modular additions, while pointwise multiplication in the NTT domain requires 256 modular multiplications}\DIFdelend \DIFaddbegin \DIFadd{In many telemetry applications, payloads are only a few tens of bytes, whereas ML-DSA signatures occupy several kilobytes}\DIFaddend . As a result, \DIFdelbegin \DIFdel{NTT-based matrix--vector products are the main cost driver in key generation, signing, and verification}\DIFdelend \DIFaddbegin \DIFadd{signature attachment can dominate packet size, increase transmission overhead, and add substantial signing and verification delay on low-power microcontrollers~\mbox{%DIFAUXCMD
-\cite{Samandari2023,Rampazzo2023,Kim2025,BlancoRomero2024}}\hskip0pt%DIFAUXCMD
-}\DIFaddend .
-
-\DIFdelbegin \subsubsection{\DIFdel{Sampling Operations}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-\DIFdelend \DIFaddbegin \DIFadd{These two background elements define the main evaluation dimensions of this paper. The computational structure of ML-DSA determines signing and verification cost on Cortex-M4 microcontrollers, while the large signature size directly affects MQTT packet expansion, transmission delay, and buffer pressure. Therefore, practical deployment must be assessed jointly at the cryptographic and protocol levels rather than from algorithm specifications alone~\mbox{%DIFAUXCMD
-\cite{Khalid2019,Ghosh2019,pqm4-benchmarks}}\hskip0pt%DIFAUXCMD
+This design makes MQTT especially sensitive to the deployment cost of ML-DSA. In many telemetry applications, payloads are only a few tens of bytes, whereas ML-DSA signatures occupy several kilobytes. As a result, signature attachment can dominate packet size, increase transmission overhead, and add substantial signing and verification delay on low-power microcontrollers~\cite{Samandari2023,Rampazzo2023,Kim2025,BlancoRomero2024}. \DIFaddbegin \DIFadd{This concern is consistent with recent embedded deployment studies beyond MQTT, which likewise report that signature latency, memory footprint, and transmitted bytes remain the main barriers to post-quantum adoption on constrained nodes~\mbox{%DIFAUXCMD
+\cite{Banegas2021,Marchsreiter2024,pqm4-benchmarks}}\hskip0pt%DIFAUXCMD
 .
 }\DIFaddend 
 
-\DIFdelbegin \DIFdel{Sampling contributes additional hashing cost but is not the dominant term. Matrix expansion }\textsc{\DIFdel{ExpandA}} %DIFAUXCMD
-\DIFdel{requires $O(k \ell n)$ work, secret sampling }\textsc{\DIFdel{ExpandS}} %DIFAUXCMD
-\DIFdel{requires $O((k+\ell)n)$ work, and challenge generation }\textsc{\DIFdel{SampleInBall}} %DIFAUXCMD
-\DIFdel{requires only $O(\tau)$ operations for $\tau \in \{39,49,60\}$. These stages contribute to the overall implementation overhead, but they remain secondary to repeated NTT-domain matrix--vector products.
-}\DIFdelend \DIFaddbegin \section{\DIFadd{Optimized Implementation and MQTT-Oriented Integration}}\label{sec:architecture}
-\DIFaddend 
+These two background elements define the main evaluation dimensions of this paper. The computational structure of ML-DSA determines signing and verification cost on Cortex-M4 microcontrollers, while the large signature size directly affects MQTT packet expansion, transmission delay, and buffer pressure. Therefore, practical deployment must be assessed jointly at the cryptographic and protocol levels rather than from algorithm specifications alone~\cite{Khalid2019,Ghosh2019,pqm4-benchmarks}.
 
-\DIFdelbegin \subsubsection{\DIFdel{Core Protocol Complexity}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
+\section{Optimized Implementation and MQTT-Oriented Integration}\label{sec:architecture}
 
-%DIFDELCMD < %%%
-\DIFdel{Table~\ref{tab:complexity} summarizes the asymptotic complexity of each core operation. }%DIFDELCMD < 
-
-%DIFDELCMD < \begin{table}[h]
-%DIFDELCMD < 	\centering
-%DIFDELCMD < 	%%%
-%DIFDELCMD < \caption{%
-{%DIFAUXCMD
-\DIFdelFL{ML-DSA Algorithm Complexity}}
-	%DIFAUXCMD
-\label{tab:complexity}
-%DIFDELCMD < \label{tab:complexity}
-%DIFDELCMD < 	\begin{tabular}{lcc}
-%DIFDELCMD < 		\toprule
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Operation}}                        %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Dominant Cost}}                            %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{Complexity}}              %DIFAUXCMD
-%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\textsc{\DIFdelFL{ExpandA}}                          %DIFAUXCMD
-%DIFDELCMD < & %%%
-\DIFdelFL{SHAKE-128 sampling                                }%DIFDELCMD < & %%%
-\DIFdelFL{$O(k \ell n)$                    }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{NTT / NTT$^{-1}$                          }%DIFDELCMD < & %%%
-\DIFdelFL{Butterfly multiplications                         }%DIFDELCMD < & %%%
-\DIFdelFL{$O(n \log n)$                    }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ }%DIFDELCMD < & %%%
-\DIFdelFL{$k$ dot products of $\ell$ NTT polys              }%DIFDELCMD < & %%%
-\DIFdelFL{$O(k \ell n)$                    }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\textsc{\DIFdelFL{Decompose}}                        %DIFAUXCMD
-%DIFDELCMD < & %%%
-\DIFdelFL{Constant-time Barrett division                    }%DIFDELCMD < & %%%
-\DIFdelFL{$O(n)$                           }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Bit-packing                               }%DIFDELCMD < & %%%
-\DIFdelFL{Shift and mask                                    }%DIFDELCMD < & %%%
-\DIFdelFL{$O(n)$                           }%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{KeyGen}}                           %DIFAUXCMD
-%DIFDELCMD < & %%%
-\DIFdelFL{$\hat{\mathbf{A}} \cdot \text{NTT}(\mathbf{s}_1)$ }%DIFDELCMD < & %%%
-\DIFdelFL{$O(k \ell n)$                    }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Sign}}                             %DIFAUXCMD
-%DIFDELCMD < & %%%
-\DIFdelFL{Rejection loop $\times$ matrix--vector product    }%DIFDELCMD < & %%%
-\DIFdelFL{$O(\bar{\kappa} \cdot k \ell n)$ }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Verify}}                           %DIFAUXCMD
-%DIFDELCMD < & %%%
-\DIFdelFL{$\hat{\mathbf{A}} \cdot \hat{\mathbf{z}}$         }%DIFDELCMD < & %%%
-\DIFdelFL{$O(k \ell n)$                    }%DIFDELCMD < \\
-%DIFDELCMD < 		\bottomrule
-%DIFDELCMD < 	\end{tabular}
-%DIFDELCMD < \end{table}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Key generation and verification each contain one dominant NTT-domain matrix--vector product and therefore scale as $O(k\ell n)$. Signing is more expensive because the same core computation is embedded in a rejection-sampling loop, yielding expected complexity $O(\bar{\kappa} \cdot k\ell n)$, where $\bar{\kappa}$ denotes the expected number of signing iterations. This structure explains why signing latency is substantially higher and less predictable than verification latency.
+This section describes the \DIFdelbegin \DIFdel{experimental design that supports }\DIFdelend \DIFaddbegin \DIFadd{implementation method used to realize }\DIFaddend the first two contributions stated in Section~I\DIFdelbegin \DIFdel{: implementation-level optimization of }\DIFdelend \DIFaddbegin \DIFadd{. The emphasis is placed on the algorithmic structure of the }\DIFaddend ML-DSA \DIFdelbegin \DIFdel{on ARM Cortex-M4 microcontrollers and broker-compatible integration of ML-DSA signatures into MQTT communication. The focus is therefore placed on how the cryptographic implementation is organized on the target platform and how signed messages are carried through an unmodified publish-subscribe workflow.
 }%DIFDELCMD < 
 
 %DIFDELCMD < %%%
-\subsubsection{\DIFdel{Parameter-Specific Operation Counts}}
-%DIFAUXCMD
-\addtocounter{subsubsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{Table~\ref{tab:op-counts} reports representative modular multiplication counts for each parameter set.
-The counts show the rapid growth in arithmetic cost as $(k,\ell)$ increases.
-}%DIFDELCMD < 
-
-%DIFDELCMD < \begin{table}[h]
-%DIFDELCMD < 	\centering
-%DIFDELCMD < 	%%%
-%DIFDELCMD < \caption{%
-{%DIFAUXCMD
-\DIFdelFL{Dominant Modular Multiplication Counts per Operation}}
-	%DIFAUXCMD
-\label{tab:op-counts}
-%DIFDELCMD < \label{tab:op-counts}
-%DIFDELCMD < 	\begin{tabular}{lccc}
-%DIFDELCMD < 		\toprule
-%DIFDELCMD < 		%%%
-\textbf{\DIFdelFL{Component}}                                    %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{DSA-44}}    %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{DSA-65}}    %DIFAUXCMD
-%DIFDELCMD < & %%%
-\textbf{\DIFdelFL{DSA-87}}    %DIFAUXCMD
-%DIFDELCMD < \\
-%DIFDELCMD < 		                                                      & %%%
-\DIFdelFL{$(k{=}4,\ell{=}4)$ }%DIFDELCMD < & %%%
-\DIFdelFL{$(k{=}6,\ell{=}5)$ }%DIFDELCMD < & %%%
-\DIFdelFL{$(k{=}8,\ell{=}7)$ }%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\DIFdelFL{NTT (per polynomial)                                  }%DIFDELCMD < & %%%
-\DIFdelFL{1,024              }%DIFDELCMD < & %%%
-\DIFdelFL{1,024              }%DIFDELCMD < & %%%
-\DIFdelFL{1,024              }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{$\hat{\mathbf{A}} \cdot \hat{\mathbf{v}}$ (pointwise) }%DIFDELCMD < & %%%
-\DIFdelFL{4,096              }%DIFDELCMD < & %%%
-\DIFdelFL{7,680              }%DIFDELCMD < & %%%
-\DIFdelFL{14,336             }%DIFDELCMD < \\
-%DIFDELCMD < 		\midrule
-%DIFDELCMD < 		%%%
-\DIFdelFL{KeyGen total                                          }%DIFDELCMD < & %%%
-\DIFdelFL{12,288             }%DIFDELCMD < & %%%
-\DIFdelFL{18,944             }%DIFDELCMD < & %%%
-\DIFdelFL{29,696             }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Sign total (expected)                                 }%DIFDELCMD < & %%%
-\DIFdelFL{69,632             }%DIFDELCMD < & %%%
-\DIFdelFL{122,726            }%DIFDELCMD < & %%%
-\DIFdelFL{141,926            }%DIFDELCMD < \\
-%DIFDELCMD < 		%%%
-\DIFdelFL{Verify total                                          }%DIFDELCMD < & %%%
-\DIFdelFL{14,336             }%DIFDELCMD < & %%%
-\DIFdelFL{22,016             }%DIFDELCMD < & %%%
-\DIFdelFL{33,792             }%DIFDELCMD < \\
-%DIFDELCMD < 		\bottomrule
-%DIFDELCMD < 	\end{tabular}
-%DIFDELCMD < \end{table}
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\subsection{\DIFdel{MQTT Protocol}}
+\subsection{\DIFdel{System Overview}}
 %DIFAUXCMD
 \addtocounter{subsection}{-1}%DIFAUXCMD
 %DIFDELCMD < 
 
 %DIFDELCMD < %%%
-\DIFdel{Message Queuing Telemetry Transport (MQTT) is an OASIS standard messaging protocol that implements a publish-subscribe architecture with low overhead for resource-constrained IoT devices. MQTT specifies three Quality of Service levels: QoS 0 (fire-and-forget), QoS 1 (guaranteed delivery via PUBACK), and QoS 2 (exactly-once delivery). Native security provisions include username/password authentication and TLS integration , but the protocol does not provide built-in digital signature support.
-}%DIFDELCMD < 
+\DIFdel{The experimental platform uses STM32F407VG development boards based on ARM Cortex-M4F cores operating at 168\,MHz, with 1\,MB of Flash and 192\,KB of SRAM. Network connectivity is provided by ESP32-WROOM-32 modules connected through UART at 115}\DIFdelend \DIFaddbegin \DIFadd{software, the implementation choices used to reduce the cost of the dominant arithmetic kernels}\DIFaddend , \DIFdelbegin \DIFdel{200 baud and configured for IEEE 802.11n WiFi with an integrated TCP/IP stack. Within this platform, the publisher performs ML-DSA signing before MQTT transmission, the broker relays the resulting messages without modification, }\DIFdelend and the \DIFdelbegin \DIFdel{subscriber performs signature verification after message reception}\DIFdelend \DIFaddbegin \DIFadd{application-layer framing by which the resulting signatures can be carried in MQTT communication}\DIFaddend .
 
-%DIFDELCMD < %%%
-\DIFdel{Integrating }\DIFdelend \DIFaddbegin \DIFadd{This section describes the experimental design that supports the first two contributions stated in Section~I: implementation-level optimization of }\DIFaddend ML-DSA \DIFdelbegin \DIFdel{into MQTT environments introduces several implementation challenges. Signatures span 2,420--4,627 bytes, compared with 64 bytes for ECDSA, corresponding to a 38$\times$--72$\times$ increase. For typical IoT sensor data of 10--100 bytes, the signature dominates packet composition. On ARM }\DIFdelend \DIFaddbegin \DIFadd{on ARM }\DIFaddend Cortex-M4 \DIFdelbegin \DIFdel{platforms, signature generation requires hundreds of milliseconds and can therefore become a processing bottleneck that affects MQTT responsiveness}\DIFdelend \DIFaddbegin \DIFadd{microcontrollers and broker-compatible integration of ML-DSA signatures into MQTT communication. The focus is therefore placed on how the cryptographic implementation is organized on the target platform and how signed messages are carried through an unmodified publish-subscribe workflow}\DIFaddend .
+\DIFdelbegin \DIFdel{The software stack follows a layered organization. The cryptographic layer provides }\DIFdelend \DIFaddbegin \subsection{\DIFadd{Algorithmic Overview}}
 
-\DIFdelbegin \section{\DIFdel{System Architecture and Adaptive Protocol}}%DIFAUXCMD
-\addtocounter{section}{-1}%DIFAUXCMD
-%DIFDELCMD < \label{sec:architecture}
-%DIFDELCMD < %%%
-\DIFdelend \DIFaddbegin \subsection{\DIFadd{System Overview}}
-\DIFaddend 
-
-\DIFdelbegin \subsection{\DIFdel{Hardware Platform}}
-%DIFAUXCMD
-\addtocounter{subsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdelend The experimental platform uses STM32F407VG development boards based on ARM Cortex-M4F cores \DIFdelbegin \DIFdel{with a hardware floating-point unit }\DIFdelend operating at 168\,MHz\DIFdelbegin \DIFdel{. Each board provides }\DIFdelend \DIFaddbegin \DIFadd{, with }\DIFaddend 1\,MB of Flash \DIFdelbegin \DIFdel{memory for program storage }\DIFdelend and 192\,KB of SRAM\DIFdelbegin \DIFdel{for runtime operations}\DIFdelend . Network connectivity is provided by ESP32-WROOM-32 \DIFdelbegin \DIFdel{wireless }\DIFdelend modules connected through UART at 115,200 baud and configured for IEEE 802.11n WiFi with an integrated TCP/IP stack. \DIFdelbegin \DIFdel{Energy measurements are obtained with INA219 current sensor modules at 12-bit resolution and $\pm$0.8 mA precision}\DIFdelend \DIFaddbegin \DIFadd{Within this platform, the publisher performs ML-DSA signing before MQTT transmission, the broker relays the resulting messages without modification, and the subscriber performs signature verification after message reception}\DIFaddend .
-
-\DIFdelbegin \subsection{\DIFdel{Software Architecture}}
-%DIFAUXCMD
-\addtocounter{subsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The software architecture }\DIFdelend \DIFaddbegin \DIFadd{The software stack }\DIFaddend follows a layered \DIFdelbegin \DIFdel{design that separates cryptographic operations, MQTT protocol handling, and application logic}\DIFdelend \DIFaddbegin \DIFadd{organization}\DIFaddend . The cryptographic layer \DIFdelbegin \DIFdel{uses the pqm4 reference library~\mbox{%DIFAUXCMD
-\cite{pqm4-benchmarks} }\hskip0pt%DIFAUXCMD
-optimized for ARM Cortex-M4 and provides all three }\DIFdelend \DIFaddbegin \DIFadd{provides }\DIFaddend ML-DSA \DIFdelbegin \DIFdel{parameter sets with verified NIST test vector compliance. The library exports three primary API functions: }\texttt{\DIFdel{crypto\_sign\_keypair()}} %DIFAUXCMD
-\DIFdel{for }\DIFdelend key generation, \DIFdelbegin \texttt{\DIFdel{crypto\_sign()}} %DIFAUXCMD
-\DIFdel{for signature generation, and }\texttt{\DIFdel{crypto\_sign\_verify()}} %DIFAUXCMD
-\DIFdel{for validation. }%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdel{The MQTT protocol }\DIFdelend \DIFaddbegin \DIFadd{signing, and verification through the pqm4 code base for ARM Cortex-M4 targets~\mbox{%DIFAUXCMD
+\DIFadd{For a parameter set with matrix dimensions $(k,\ell)$, the implementation follows the standard }\DIFaddend ML-DSA \DIFaddbegin \DIFadd{flow of }\DIFaddend key generation, signing, and verification \DIFdelbegin \DIFdel{through the pqm4 code base for ARM Cortex-M4 targets~\mbox{%DIFAUXCMD
 \cite{pqm4-benchmarks}}\hskip0pt%DIFAUXCMD
-. The communication }\DIFaddend layer uses the Eclipse Paho MQTT Embedded C client \DIFdelbegin \DIFdel{configured for }\DIFdelend \DIFaddbegin \DIFadd{to exchange }\DIFaddend QoS 1 \DIFdelbegin \DIFdel{operation with 5-s keepalive intervals and communicates with a Mosquitto MQTT broker. Configuration parameters include 256-byte receive buffers and 5, 120-byte transmit buffers, which are sufficient for ML-DSA-87 signatures plus application data. }\DIFdelend \DIFaddbegin \DIFadd{messages with a Mosquitto broker. This separation allows implementation cost at the cryptographic layer and transmission overhead at the MQTT layer to be evaluated independently and then combined in the end-to-end measurements.
+. The communication layer uses the Eclipse Paho MQTT Embedded C client to exchange QoS 1 messages with a Mosquitto broker. This separation allows implementation cost at the cryptographic layer and transmission overhead at the MQTT layer to be evaluated independently and then combined in the end-to-end measurements. }\DIFdelend \DIFaddbegin \DIFadd{over the ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$. From an initial seed $\xi$, the internal seeds $(\rho,\rho',K)$ are derived and used to generate the public matrix $\mathbf{A}$ and the short secret vectors $\mathbf{s}_1$ and $\mathbf{s}_2$. In transform notation, the key-generation stage is summarized as
 }\DIFaddend 
 
-\DIFaddbegin \subsection{\DIFadd{Implementation-Level Optimization}}
+\DIFaddbegin \begin{align}
+\DIFadd{\hat{\mathbf{A}} }&\DIFadd{= \mathsf{ExpandA}(\rho), }\\
+\DIFadd{\mathbf{s}_1 }&\DIFadd{= \mathsf{ExpandS}(\rho',\eta,0), }\\
+\DIFadd{\mathbf{s}_2 }&\DIFadd{= \mathsf{ExpandS}(\rho',\eta,\ell).
+}\end{align}
 
-\DIFadd{The implementation-level optimization targets the arithmetic kernels that dominate ML-DSA execution time on Cortex-M4 microcontrollers. As discussed in Section~\ref{sec:complexity}, these kernels are concentrated in NTT-based polynomial multiplication, coefficient-wise modular operations, and the surrounding reduction steps. Rather than changing the ML-DSA algorithm or parameter sets, the implementation focuses on reducing the cost of these dominant operations while preserving compatibility with the standardized design in FIPS 204~\mbox{%DIFAUXCMD
-\cite{NIST-FIPS-204}}\hskip0pt%DIFAUXCMD
-.
+\begin{equation}
+\DIFadd{\mathbf{t} = \operatorname{NTT}^{-1}\!\left(\hat{\mathbf{A}}\hat{\mathbf{s}}_1\right) + \mathbf{s}_2,
+\qquad
+\hat{\mathbf{s}}_1 = \operatorname{NTT}(\mathbf{s}_1),
+}\end{equation}
+
+\DIFadd{followed by $\mathsf{Power2Round}(\mathbf{t}) = (\mathbf{t}_1,\mathbf{t}_0)$. This decomposition separates the public component $\mathbf{t}_1$ from the low-order private component $\mathbf{t}_0$ and prepares the state used in subsequent signing and verification.
 }
 
-\DIFadd{Three optimization directions are applied. First, critical arithmetic routines are mapped to hand-tuned ARM Cortex-M4 instructions in order to improve instruction scheduling and reduce unnecessary memory traffic in repeated polynomial operations. Second, modular reduction is organized around Montgomery-domain computation so that expensive division-like operations are avoided in the main arithmetic path. Third, reduction is deferred when intermediate value ranges permit it, which lowers the number of normalization steps inside NTT butterfly sequences. Together, these changes target the implementation bottlenecks that are most relevant in resource-constrained devices.
+\DIFadd{To reduce repeated preprocessing, the implementation keeps the long-lived transformed state
 }
 
-\DIFadd{The optimized implementation retains the standard signing interface required by the communication layer. Key generation is invoked through }\texttt{\DIFadd{crypto\_sign\_keypair()}}\DIFadd{, signatures are generated through }\texttt{\DIFadd{crypto\_sign()}}\DIFadd{, and validation is performed through }\texttt{\DIFadd{crypto\_sign\_verify()}}\DIFadd{. This interface preserves a clean boundary between cryptographic processing and MQTT message handling, which is important for the system-level evaluation in Section~\ref{sec:evaluation}.
+\begin{equation}
+\DIFadd{\hat{\mathbf{A}}, \quad \hat{\mathbf{s}}_1, \quad \hat{\mathbf{s}}_2, \quad \hat{\mathbf{t}}_0, \quad \widehat{2^d\mathbf{t}_1}
+}\end{equation}
+
+\DIFadd{available for reuse across signature generation and verification. This choice is especially important because signing is iterative and repeatedly invokes the same matrix--vector and challenge-related polynomial products.
 }
 
-\DIFaddend \subsection{\DIFaddbegin \DIFadd{MQTT-Oriented }\DIFaddend Signature Integration}
+\DIFaddend \subsection{Implementation-Level Optimization}
 
-\DIFdelbegin \DIFdel{Signature integration adopts }\DIFdelend \DIFaddbegin \DIFadd{MQTT does not define native fields for application-layer digital signatures. To address this limitation without modifying broker behavior, }\DIFaddend a payload-embedded \DIFdelbegin \DIFdel{architecture that maintains backward compatibility with standard MQTT brokers. }\DIFdelend \DIFaddbegin \DIFadd{integration method is used. The publisher constructs a composite application payload that contains both the original telemetry data and the ML-DSA authentication fields, and the resulting byte string is transmitted as a standard MQTT PUBLISH payload. Because the broker handles the packet as opaque application data, no protocol extension or broker-side parsing logic is required.
+The implementation-level optimization \DIFdelbegin \DIFdel{targets the arithmetic kernels that dominate }\DIFdelend \DIFaddbegin \DIFadd{is applied without changing the }\DIFaddend ML-DSA \DIFdelbegin \DIFdel{execution time on Cortex-M4 microcontrollers}\DIFdelend \DIFaddbegin \DIFadd{algorithm or parameter sets}\DIFaddend . As discussed in Section~\ref{sec:complexity}, \DIFdelbegin \DIFdel{these kernels are concentrated in NTT-based polynomial multiplication, coefficient-wise modular operations, and }\DIFdelend \DIFaddbegin \DIFadd{the dominant cost arises from repeated transforms, modular multiplication, coefficient decomposition, and the rejection-sampling loop in signing. The optimization therefore targets these paths directly while preserving }\DIFaddend the \DIFdelbegin \DIFdel{surrounding reduction steps. Rather than changing the ML-DSA algorithm or parameter sets, the implementation focuses on reducing the cost of these dominant operations while preserving compatibility with the standardized design }\DIFdelend \DIFaddbegin \DIFadd{standardized procedure }\DIFaddend in FIPS 204~\cite{NIST-FIPS-204}.
+
+\DIFdelbegin \DIFdel{Three optimization directions are applied. First, critical arithmetic routines are mapped to hand-tuned ARM Cortex-M4 instructions in order to improve instruction scheduling and reduce unnecessary memory traffic in repeated polynomial operations. Second, modular reduction is organized around Montgomery-domain computation so that expensive division-like operations are avoided in the }\DIFdelend \DIFaddbegin \DIFadd{The first optimization direction is specialization of the Number Theoretic Transform (NTT) path. Since the polynomial degree is fixed at $n=256$, the transform always consists of eight radix-2 butterfly layers. The basic butterfly update can be written as
 }
 
-\DIFaddend The composite message \DIFdelbegin \DIFdel{format uses type-length-value (TLV) encoding and includes a 1-byte message type identifier, }\DIFdelend \DIFaddbegin \DIFadd{uses }\DIFaddend a \DIFdelbegin \DIFdel{2-byte }\DIFdelend \DIFaddbegin \DIFadd{type-length-value format consisting of a message type field, }\DIFaddend payload length, \DIFdelbegin \DIFdel{the variable-length }\DIFdelend application payload, \DIFdelbegin \DIFdel{a 1-byte }\DIFdelend signature algorithm identifier, \DIFdelbegin \DIFdel{a 2-byte }\DIFdelend key identifier, \DIFdelbegin \DIFdel{a 4-byte Unix timestampfor replay mitigation, a 2-byte }\DIFdelend \DIFaddbegin \DIFadd{timestamp, }\DIFaddend signature length, and \DIFdelbegin \DIFdel{variable-length }\DIFdelend \DIFaddbegin \DIFadd{the }\DIFaddend ML-DSA signature \DIFdelbegin \DIFdel{data (2,420--4,627 bytes). }%DIFDELCMD < 
+\begin{equation}
+\DIFadd{(u,v) \mapsto (u + \zeta_i v,\; u - \zeta_i v) \Mod{q},
+\label{eq:ntt-butterfly}
+}\end{equation}
 
-%DIFDELCMD < %%%
-\DIFdel{This format enables subscribers to parse messages without prior knowledge of the signature algorithm because the metadata fields are self-describing. The TLV structure also accommodates future cryptographic algorithm upgrades by extending the algorithm identifier without requiring protocol-level modifications}\DIFdelend \DIFaddbegin \DIFadd{itself. This structure allows the subscriber to recover the application data, identify the verification algorithm, and validate freshness before signature verification. It also keeps the integration compatible with all three standardized ML-DSA parameter sets, whose signature lengths differ substantially}\DIFaddend .
+\DIFadd{where $\zeta_i$ denotes the corresponding twiddle factor. By using a fixed transform schedule and precomputing the required twiddle sequence, the transform avoids unnecessary runtime control overhead. This organization is important because polynomial multiplication is reduced to
+}
 
-\DIFdelbegin \subsection{\DIFdel{Cryptographic Optimization}}
-%DIFAUXCMD
-\addtocounter{subsection}{-1}%DIFAUXCMD
-%DIFDELCMD < 
+\begin{equation}
+\DIFadd{\widehat{f g} = \hat{f} \odot \hat{g},
+\label{eq:pointwise-mul}
+}\end{equation}
 
-%DIFDELCMD < %%%
-\DIFdel{The implementation incorporates optimization techniques targeting NTT operations and modular arithmetic. NTT operations dominate the computational cost and account for 60--70\% of total signing cycles. The main optimizations are as follows:
+\DIFadd{where $\odot$ denotes coefficient-wise multiplication in the NTT domain. Equation~\eqref{eq:pointwise-mul} replaces quadratic-time schoolbook multiplication with the standard NTT-based evaluation path.
+}
+
+\DIFadd{The second optimization direction is removal of division from the }\DIFaddend main arithmetic path. \DIFdelbegin \DIFdel{Third, reduction is deferred when intermediate value ranges permit it,
+which lowers the number of normalization steps inside NTT butterfly sequences. Together, these changes target the implementation bottlenecks that are most relevant in resource-constrained devices.
+}\DIFdelend \DIFaddbegin \DIFadd{Modular reduction is organized around Barrett-style reciprocal multiplication,
+}\DIFaddend 
+
+\DIFdelbegin \DIFdel{The optimized implementation retains the standard signing interface required by the communication layer.
+Key generation is invoked through }\texttt{\DIFdel{crypto\_sign\_keypair()}}%DIFAUXCMD
+\DIFdel{, signatures are generated through }\texttt{\DIFdel{crypto\_sign()}}%DIFAUXCMD
+\DIFdel{,
+}\DIFdelend \DIFaddbegin \begin{equation}
+\DIFadd{\operatorname{red}_q(x) = x - \left\lfloor \frac{x\mu_q}{2^{\kappa}} \right\rfloor q,
+\qquad
+\mu_q = \left\lfloor \frac{2^{\kappa}}{q} \right\rfloor,
+\label{eq:barrett}
+}\end{equation}
+
+\DIFadd{which replaces hardware division with multiplication, bit shifting, and a final correction step. A related reciprocal-based procedure is used when the decomposition stage requires quotient extraction with respect to $2\gamma_2$. This choice is relevant because $\mathsf{Decompose}$, $\mathsf{HighBits}$, and $\mathsf{LowBits}$ are called repeatedly in both signing and verification.
+}
+
+\DIFadd{The third optimization direction is reuse of transformed state across iterations of the signing loop. For each counter value $\kappa$, only the fresh masking vector $\mathbf{y}$ and challenge polynomial $c$ are transformed online. The main per-iteration computations are
+}
+
+\begin{align}
+\DIFadd{\mathbf{y} }&\DIFadd{= \mathsf{ExpandMask}(\rho'',\kappa), }\\
+\DIFadd{\mathbf{w} }&\DIFadd{= \operatorname{NTT}^{-1}\!\left(\hat{\mathbf{A}}\hat{\mathbf{y}}\right), }\\
+\DIFadd{\mathbf{z} }&\DIFadd{= \mathbf{y} + \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{s}}_1\right), }\\
+\DIFadd{\mathbf{r}_0 }&\DIFadd{= \mathsf{LowBits}\!\left(\mathbf{w} - \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{s}}_2\right)\right),
+\label{eq:sign-core}
+}\end{align}
+
+\DIFadd{where $\hat{\mathbf{y}} = \operatorname{NTT}(\mathbf{y})$ }\DIFaddend and \DIFdelbegin \DIFdel{validation is performed through }\texttt{\DIFdel{crypto\_sign\_verify()}}%DIFAUXCMD
+\DIFdel{. This interface preserves a clean boundary between cryptographic processing and MQTT message handling, which is important for the system-level evaluation in Section~\ref{sec:evaluation}}\DIFdelend \DIFaddbegin \DIFadd{$\hat{c} = \operatorname{NTT}(c)$. Once the norm constraints for $\mathbf{z}$ and $\mathbf{r}_0$ are satisfied, the hint-generation step is computed as
+}
+
+\begin{align}
+\DIFadd{\mathbf{u} }&\DIFadd{= \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{t}}_0\right), }\\
+\DIFadd{\mathbf{h} }&\DIFadd{= \mathsf{MakeHint}\!\left(-\mathbf{u},\; \mathbf{w} - \operatorname{NTT}^{-1}\!\left(\hat{c}\,\hat{\mathbf{s}}_2\right) + \mathbf{u}\right).
+\label{eq:hint-step}
+}\end{align}
+
+\DIFadd{Because $\hat{\mathbf{A}}$, $\hat{\mathbf{s}}_1$, $\hat{\mathbf{s}}_2$, and $\hat{\mathbf{t}}_0$ are reused, the rejection-sampling loop does not repeatedly transform long-lived key-dependent state. This optimization directly reduces the overhead of the most expensive operation in ML-DSA deployment}\DIFaddend .
+
+\DIFaddbegin \DIFadd{Algorithm~\ref{alg:opt-sign} summarizes the optimized signing flow. The main implementation feature is that only the ephemeral values generated within the current signing attempt are transformed online, while the matrix and key-dependent NTT-domain state are reused across iterations.
+}
+
+\begin{algorithm}[t]
+\caption{\DIFadd{Cached-Transform ML-DSA Signing Flow}}
+\label{alg:opt-sign}
+\small
+\KwIn{$\mu$, $\rho''$, $\hat{\mathbf{A}}$, $\hat{\mathbf{s}}_1$, $\hat{\mathbf{s}}_2$, $\hat{\mathbf{t}}_0$}
+\KwOut{$\sigma=(\tilde{c},\mathbf{z},\mathbf{h})$}
+\For{$\kappa \gets 0,\ell,2\ell,\ldots$}{
+    $\mathbf{y} \gets \mathsf{ExpandMask}(\rho'',\kappa)$; $\hat{\mathbf{y}} \gets \operatorname{NTT}(\mathbf{y})$\;
+    $\mathbf{w} \gets \operatorname{NTT}^{-1}(\hat{\mathbf{A}}\hat{\mathbf{y}})$; $\mathbf{w}_1 \gets \mathsf{HighBits}(\mathbf{w})$\;
+    $\tilde{c} \gets H(\mu \parallel \mathsf{Encode}(\mathbf{w}_1))$; $c \gets \mathsf{SampleInBall}(\tilde{c})$\;
+    $\hat{c} \gets \operatorname{NTT}(c)$\;
+    $\mathbf{a} \gets \operatorname{NTT}^{-1}(\hat{c}\,\hat{\mathbf{s}}_1)$; $\mathbf{b} \gets \operatorname{NTT}^{-1}(\hat{c}\,\hat{\mathbf{s}}_2)$\;
+    $\mathbf{z} \gets \mathbf{y} + \mathbf{a}$; $\mathbf{r}_0 \gets \mathsf{LowBits}(\mathbf{w}-\mathbf{b})$\;
+    \If{$\|\mathbf{z}\|_{\infty} \geq \gamma_1-\beta$ \textbf{or} $\|\mathbf{r}_0\|_{\infty} \geq \gamma_2-\beta$}{
+        continue\;
+    }
+    $\mathbf{u} \gets \operatorname{NTT}^{-1}(\hat{c}\,\hat{\mathbf{t}}_0)$\;
+    $\mathbf{h} \gets \mathsf{MakeHint}(-\mathbf{u},\mathbf{w}-\mathbf{b}+\mathbf{u})$\;
+    \If{$\|\mathbf{u}\|_{\infty} \geq \gamma_2$ \textbf{or} $\|\mathbf{h}\|_1 > \omega$}{
+        continue\;
+    }
+    \Return{$(\tilde{c},\mathbf{z},\mathbf{h})$}\;
+}
+\end{algorithm}
+
+\DIFadd{The fourth optimization direction is compact fixed-length serialization. For each parameter set, public keys, private keys, and signatures are encoded as contiguous byte strings with predetermined lengths. In particular,
+}
+
+\begin{align}
+\DIFadd{|\sigma| }&\DIFadd{\in \{2420,\ 3309,\ 4627\}\ \text{bytes}, }\\
+\DIFadd{|pk| }&\DIFadd{\in \{1312,\ 1952,\ 2592\}\ \text{bytes},
+\label{eq:enc-len}
+}\end{align}
+
+\DIFadd{for ML-DSA-44, ML-DSA-65, and ML-DSA-87, respectively. This property is useful for constrained implementations because it simplifies buffer management and provides a direct interface to transport protocols that treat the signature as opaque application data.
+}
+
+\DIFaddend \subsection{MQTT-Oriented Signature Integration}
+
+MQTT does not define native fields for application-layer digital signatures\DIFdelbegin \DIFdel{. To address this limitation without modifying broker behavior, a payload-embedded integration method is used. The publisher constructs a composite application payload that contains both the original telemetry data and the ML-DSA authentication fields }\DIFdelend , \DIFaddbegin \DIFadd{so signature transport is handled by payload encapsulation rather than protocol modification. Let $m$ denote the application payload }\DIFaddend and \DIFaddbegin \DIFadd{let $\sigma$ denote the encoded ML-DSA signature. A broker-compatible signed message can be represented as
+}
+
+\begin{align}
+\DIFadd{\mathcal{F} =}{}& \DIFadd{\mathsf{type} \parallel \mathsf{len}(m) \parallel m \parallel \mathsf{alg} \parallel }\\
+& \DIFadd{\mathsf{kid} \parallel \mathsf{ts} \parallel \mathsf{len}(\sigma) \parallel \sigma.
+\label{eq:mqtt-frame}
+}\end{align}
+
+\DIFadd{where $\mathsf{alg}$ is the algorithm identifier, $\mathsf{kid}$ is the key identifier, and $\mathsf{ts}$ is a freshness field such as a timestamp or sequence value. The signed content can be bound to these metadata fields by defining the authenticated byte string as
+}
+
+\begin{equation}
+\DIFadd{m^{\star} = m \parallel \mathsf{alg} \parallel \mathsf{kid} \parallel \mathsf{ts}.
+\label{eq:auth-bytes}
+}\end{equation}
+
+\DIFadd{At the publisher, the endpoint computes $\sigma = \mathsf{Sign}(sk,m^{\star})$ and places }\DIFaddend the resulting byte string \DIFdelbegin \DIFdel{is transmitted as a standard MQTT PUBLISH payload. }\DIFdelend \DIFaddbegin \DIFadd{into the MQTT payload. At the subscriber, the same frame is parsed, freshness and key selection are checked, and verification is performed by evaluating $\mathsf{Verify}(pk,m^{\star},\sigma)$. }\DIFaddend Because the \DIFdelbegin \DIFdel{broker handles the packet as opaque application data, no protocol extension or broker-side parsing logic is required.
 }%DIFDELCMD < 
 
 %DIFDELCMD < %%%
-\textbf{\DIFdel{Assembly Optimization}}%DIFAUXCMD
-\DIFdel{: Hand-optimized ARM assembly exploits instruction-level parallelism and efficient use of the }\texttt{\DIFdel{UMULL}} %DIFAUXCMD
-\DIFdel{instruction for 32$\times$32$\rightarrow$64-bit multiplication. }%DIFDELCMD < 
+\DIFdel{The composite message uses a type-length-value format consisting of a message type field, payload length, application payload, signature algorithm identifier, key identifier, timestamp, signature length, and }\DIFdelend \DIFaddbegin \DIFadd{broker processes the payload as opaque data, }\DIFaddend the \DIFdelbegin \DIFdel{ML-DSA signature itself. This structure allows the subscriber to recover the application data, identify the verification algorithm, and validate freshness before signature verification.
+It also keeps the integration compatible with all three standardized ML-DSA parameter sets, whose signature lengths differ substantially.
+}\DIFdelend \DIFaddbegin \DIFadd{publish-subscribe semantics, topic handling, and broker forwarding logic remain unchanged.
+}\DIFaddend 
 
-%DIFDELCMD < %%%
-\textbf{\DIFdel{Montgomery Reduction}}%DIFAUXCMD
-\DIFdel{: Replacing division-based modular reduction with multiplication-based techniques removes expensive division operations and reduces the corresponding overhead by 25--35\%.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\textbf{\DIFdel{Lazy Reduction}}%DIFAUXCMD
-\DIFdel{: Deferring modular reduction across multiple butterfly operations reduces the reduction frequency and improves NTT latency by 15--25\%}\DIFdelend \DIFaddbegin \DIFadd{This integration design is intentionally MQTT-oriented rather than MQTT-modifying. The publish-subscribe semantics, QoS handling, topic structure, and broker operation remain unchanged, while signature processing is confined to the endpoints. As a result, the measured overhead in Section~\ref{sec:evaluation} can be interpreted directly as the cost of deploying ML-DSA over an otherwise standard MQTT workflow}\DIFaddend .
+This integration design is intentionally MQTT-oriented rather than MQTT-modifying. The \DIFdelbegin \DIFdel{publish-subscribe semantics, QoS handling, topic structure, and broker operation remain unchanged, while signature processing is confined to the endpoints. As a result, the measured overhead in Section~\ref{sec:evaluation} can be interpreted directly as the cost of deploying ML-DSA over an otherwise standard MQTT workflow}\DIFdelend \DIFaddbegin \DIFadd{main protocol effect is therefore limited to payload expansion and endpoint-side cryptographic delay, which can be analyzed independently of any broker implementation changes}\DIFaddend .
 
 
-\DIFdelbegin \DIFdel{Together, these optimizations improve performance by 40--50\% relative to the reference implementations.
-}%DIFDELCMD < 
-
-%DIFDELCMD < %%%
-\DIFdelend \section{Experimental Evaluation}\label{sec:evaluation}
+\section{Experimental Evaluation}\label{sec:evaluation}
 
 \subsection{Methodology}\label{sec:methodology}
 
@@ -754,7 +707,6 @@ ML-DSA remains viable for applications that tolerate multi-second latency and su
 
 \bibliographystyle{IEEEtran_doi}
 \bibliography{ biblio.bib }
-
 
 \begin{IEEEbiographynophoto}{Jiahao Xiang}
 	is pursuing a Master's degree in Electronic Information at Hengyang Normal University, China. His research focuses on cryptographic engineering and efficient implementations of block ciphers on resource-constrained devices. Publications include works on lightweight cryptography optimization and contributions to open-source cryptographic projects.
