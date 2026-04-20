@@ -15,7 +15,6 @@ Your job is to update the release diff for `tex/index.tex`, verify it builds loc
 
 - Source paper: `tex/index.tex`
 - Release diff source: `tex/index-release-diff.tex`
-- Release diff PDF target: `tex/index-release-diff.pdf`
 
 ## Required Workflow
 
