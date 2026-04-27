@@ -104,7 +104,7 @@
 \maketitle
 
 \begin{abstract}
-	The emergence of large-scale quantum computers makes migration of Internet of Things (IoT) systems to post-quantum cryptographic standards increasingly necessary. This paper studies the deployment of ML-DSA (Module-Lattice-Based Digital Signature Algorithm) in MQTT-based IoT systems on ARM Cortex-M4 microcontrollers from three connected perspectives: implementation optimization, MQTT-oriented signature integration, and system-level evaluation. An optimized ML-DSA implementation is developed by targeting the dominant arithmetic kernels on constrained devices, and a broker-compatible method is used to embed ML-DSA signatures into MQTT publish-subscribe communication. Experimental results indicate that ML-DSA still imposes substantial overhead relative to ECDSA, with signature generation latencies of \textbf{663--1,136\,ms} and computational overhead of \textbf{70.6--121.0$\times$} across parameter sets. End-to-end evaluation further quantifies message expansion, latency, throughput, and memory cost, providing practical guidance for ML-DSA deployment in resource-constrained MQTT environments.
+	The emergence of large-scale quantum computers makes migration of Internet of Things (IoT) systems to post-quantum cryptographic standards increasingly necessary. For MQTT-based IoT systems, the key deployment problem is not only whether ML-DSA (Module-Lattice-Based Digital Signature Algorithm) can be implemented on constrained devices, but whether its signing cost and multi-kilobyte signatures can be accommodated in a lightweight publish-subscribe workflow without modifying deployed brokers. This paper addresses that problem through a bottleneck-driven Cortex-M4 implementation, a broker-compatible payload framing method, and an end-to-end evaluation across all standardized ML-DSA parameter sets. The implementation targets repeated arithmetic kernels rather than changing the standardized algorithm, and the MQTT integration keeps the broker path unchanged so that the measured overhead reflects endpoint computation and payload expansion. Experimental results indicate that ML-DSA still imposes substantial overhead relative to ECDSA, with signature generation latencies of \textbf{663--1,136\,ms} and computational overhead of \textbf{70.6--121.0$\times$} across parameter sets. End-to-end evaluation further quantifies message expansion, latency, throughput, and memory cost, identifying the deployment conditions under which ML-DSA is practical in resource-constrained MQTT environments.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -121,16 +121,16 @@ Among post-quantum primitives, ML-DSA (Module-Lattice-Based Digital Signature Al
 
 These costs become more critical in MQTT-based IoT environments. MQTT is widely adopted because its publish-subscribe architecture and lightweight packet format suit resource-constrained sensing and control applications. The same design choices, however, also make the protocol sensitive to cryptographic expansion. When multi-kilobyte signatures are attached to short telemetry payloads, message size, transmission delay, and signing latency can dominate end-to-end performance. As a result, the feasibility of deploying standardized post-quantum signatures in practical MQTT workflows cannot be inferred from algorithm specifications alone and must be evaluated at the system level.
 
-Existing studies have examined post-quantum signatures from several complementary perspectives. Embedded benchmarking and optimization studies have reported the cost of Dilithium and ML-DSA on ARM Cortex-M platforms and related microcontrollers, including Cortex-M3, Cortex-M4, Cortex-M7, and 8-bit AVR targets~\cite{Banegas2021,Benchmark2022,pqm4-benchmarks,Barrett2023}. Recent deployment-oriented work has also highlighted migration engineering and implementation-security issues for ML-DSA, including fault-attack exposure and countermeasure requirements~\cite{Li2024,Dinu2025}. At the protocol level, MQTT-focused studies have shown that post-quantum authentication can substantially increase latency and payload size~\cite{Samandari2023,Rampazzo2023}, protocol adaptations have been explored for MQTT-SN and CoAP~\cite{BlancoRomero2024}, and KEM-based alternatives have been proposed for highly constrained MQTT nodes~\cite{Kim2025}. Broader reviews of protocol migration likewise identify messaging systems as an area where deployment evidence remains limited~\cite{Egbuagha2025}. Nevertheless, a focused evaluation of standardized ML-DSA parameter sets within a complete MQTT publish-subscribe workflow on Cortex-M4-class microcontrollers remains limited. In particular, the relationship among cryptographic cost, message expansion, and protocol-level delay requires clearer empirical characterization.
+Existing studies have examined post-quantum signatures from several complementary perspectives. Embedded benchmarking and optimization studies have reported the cost of Dilithium and ML-DSA on ARM Cortex-M platforms and related microcontrollers, including Cortex-M3, Cortex-M4, Cortex-M7, and 8-bit AVR targets~\cite{Banegas2021,Benchmark2022,pqm4-benchmarks,Barrett2023}. Recent deployment-oriented work has also highlighted migration engineering and implementation-security issues for ML-DSA, including fault-attack exposure and countermeasure requirements~\cite{Li2024,Dinu2025}. At the protocol level, MQTT-focused studies have shown that post-quantum authentication can substantially increase latency and payload size~\cite{Samandari2023,Rampazzo2023}, protocol adaptations have been explored for MQTT-SN and CoAP~\cite{BlancoRomero2024}, and KEM-based alternatives have been proposed for highly constrained MQTT nodes~\cite{Kim2025}. Broader reviews of protocol migration likewise identify messaging systems as an area where deployment evidence remains limited~\cite{Egbuagha2025}. Nevertheless, existing results do not fully answer three deployment questions for standardized ML-DSA in MQTT systems: which computation dominates on Cortex-M4 publishers, whether signatures can be carried through existing MQTT brokers without protocol changes, and how the combined cryptographic and packet-size overhead changes end-to-end latency. Without this joint evidence, the value of implementation optimization and MQTT-specific integration remains difficult to assess.
 
-This work addresses that gap through an empirical study of ML-DSA integration in MQTT-based IoT systems on ARM Cortex-M4 microcontrollers. The study is organized as a connected chain from implementation optimization to protocol integration and then to system-level evaluation. The main contributions are as follows:
+This work addresses these issues through an empirical study of ML-DSA integration in MQTT-based IoT systems on ARM Cortex-M4 microcontrollers. The study is organized as a connected chain from bottleneck identification, to a standard-preserving implementation strategy, to broker-compatible protocol integration, and finally to end-to-end deployment evaluation. The goal is not to claim that broker-compatible ML-DSA is always the best migration path. Instead, the paper clarifies where this path is useful and where alternative designs, such as protocol adaptation, KEM-based security, or hardware-assisted implementations, may be more appropriate. The main contributions are as follows:
 
 \begin{enumerate}
-\item \textbf{Implementation-Level Optimization}: An optimized ML-DSA implementation is developed for ARM Cortex-M4 microcontrollers by targeting the dominant arithmetic kernels that determine execution cost in resource-constrained environments.
+\item \textbf{Bottleneck-Driven Endpoint Optimization}: The first issue addressed is the high signing cost caused by repeated polynomial transforms, modular reduction, coefficient decomposition, and rejection sampling on Cortex-M4-class publishers. Instead of introducing nonstandard parameters or relying on platform-specific hardware acceleration, the implementation preserves FIPS 204 compatibility and reduces repeated endpoint work through fixed NTT scheduling, reciprocal reduction, and cached NTT-domain state.
 
-\item \textbf{MQTT-Oriented Signature Integration}: A broker-compatible integration method is designed to embed ML-DSA signatures into MQTT publish-subscribe communication while preserving practical deployability on constrained devices.
+\item \textbf{Broker-Compatible MQTT Authentication}: The second issue addressed is the lack of native signature fields in MQTT and the limited deployability of broker-modifying solutions. A payload-embedded framing method binds the telemetry payload with algorithm, key, freshness, and signature fields while allowing standard MQTT brokers to forward signed messages as opaque payloads. This design isolates the cost of post-quantum authentication to endpoint computation and payload expansion.
 
-\item \textbf{System-Level Evaluation and Deployment Analysis}: Cycle-accurate and end-to-end experiments quantify computational overhead, message expansion, latency, throughput, and memory cost across all three standardized ML-DSA parameter sets relative to an ECDSA P-256 baseline, providing guidance for constrained IoT deployment.
+\item \textbf{Evidence-Based Deployment Boundary}: The third issue addressed is the absence of a joint cryptographic and protocol-level baseline for ML-DSA in a complete MQTT workflow. Cycle-accurate and end-to-end experiments quantify computation, message expansion, latency, throughput, and memory cost across all three standardized parameter sets relative to ECDSA P-256. The resulting measurements are compared with alternative migration paths to identify when ML-DSA is practical, when message aggregation or hybrid authentication is required, and which parameter-set trade-offs dominate deployment decisions.
 \end{enumerate}
 
 The remainder of this paper is organized as follows: Section~\ref{sec:related} presents technical background. Section~\ref{sec:architecture} describes the optimized implementation and MQTT-oriented integration method. Section~\ref{sec:evaluation} presents experimental evaluation. Section~\ref{sec:conclusion} concludes with implications for deployment.
@@ -170,11 +170,11 @@ These two background elements define the main evaluation dimensions of this pape
 
 \section{Optimized Implementation and MQTT-Oriented Integration}\label{sec:architecture}
 
-This section describes the implementation method used to realize the first two contributions stated in Section~I. The emphasis is placed on the algorithmic structure of the ML-DSA software, the implementation choices used to reduce the cost of the dominant arithmetic kernels, and the application-layer framing by which the resulting signatures can be carried in MQTT communication.
+This section describes how the first two deployment issues identified in Section~I are addressed. The design is constrained by two requirements. First, ML-DSA must remain compatible with FIPS 204, so performance improvement is pursued through equivalent implementation organization rather than parameter or algorithm changes. Second, MQTT deployment should preserve interoperability with existing brokers, so signature transport is handled at the application-payload layer rather than through broker-aware protocol extensions.
 
-Fig.~\ref{fig:mqtt-mldsa-architecture} summarizes the resulting deployment architecture. The cryptographic optimization is confined to endpoint software on the constrained publisher and subscriber, whereas the MQTT broker forwards the signed payload as opaque application data.
+Fig.~\ref{fig:mqtt-mldsa-architecture} summarizes the resulting deployment architecture. The cryptographic optimization is confined to endpoint software on the constrained publisher and subscriber, whereas the MQTT broker forwards the signed payload as opaque application data. This separation makes the measured overhead attributable to endpoint computation and payload expansion, rather than to broker modification or protocol redesign.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\columnwidth]{mqtt-mldsa-architecture}
 \caption{Optimized ML-DSA integration in an MQTT publish-subscribe workflow. Cached NTT-domain state reduces endpoint signing cost, while the broker remains unchanged because signatures are carried inside the MQTT payload.}
@@ -209,18 +209,18 @@ available for reuse across signature generation and verification. This choice is
 
 \subsection{Implementation-Level Optimization}
 
-The implementation-level optimization is applied without changing the ML-DSA algorithm or parameter sets. As discussed in Section~\ref{sec:complexity}, the dominant cost arises from repeated transforms, modular multiplication, coefficient decomposition, and the rejection-sampling loop in signing. The optimization therefore targets these paths directly while preserving the standardized procedure in FIPS 204~\cite{NIST-FIPS-204}.
+The implementation-level optimization is applied without changing the ML-DSA algorithm or standardized parameter sets. As discussed in Section~\ref{sec:complexity}, the dominant cost arises from repeated transforms, modular multiplication, coefficient decomposition, and the rejection-sampling loop in signing. This bottleneck cannot be removed by MQTT-layer changes, and nonstandard parameter changes would weaken direct compliance with the standardized deployment target. The optimization therefore targets the repeated endpoint arithmetic paths while preserving the FIPS 204 procedure~\cite{NIST-FIPS-204}.
 
-Fig.~\ref{fig:mldsa-implementation-optimization} summarizes the implementation structure. Precomputed schedules, reciprocal constants, and NTT-domain key state are separated from the online signing attempt, so the rejection loop transforms only fresh ephemeral values.
+Fig.~\ref{fig:mldsa-implementation-optimization} summarizes the implementation structure. Precomputed schedules, reciprocal constants, and NTT-domain key state are separated from the online signing attempt, so the rejection loop transforms only fresh ephemeral values. This organization is preferable on Cortex-M4-class endpoints because it reduces repeated work in the operation that directly limits publication rate.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\columnwidth]{mldsa-implementation-optimization}
 \caption{Implementation-level optimization structure for ML-DSA signing. Fixed NTT scheduling, reciprocal reductions, and cached NTT-domain state reduce repeated work in the online rejection-sampling loop without changing the standardized algorithm.}
 \label{fig:mldsa-implementation-optimization}
 \end{figure}
 
-The first optimization direction is specialization of the Number Theoretic Transform (NTT) path. Since the polynomial degree is fixed at $n=256$, the transform always consists of eight radix-2 butterfly layers. The basic butterfly update can be written as
+The first optimization direction is specialization of the Number Theoretic Transform (NTT) path. This choice addresses the repeated polynomial multiplication cost that dominates signing and verification. Since the polynomial degree is fixed at $n=256$, the transform always consists of eight radix-2 butterfly layers. The basic butterfly update can be written as
 
 \begin{equation}
 (u,v) \mapsto (u + \zeta_i v,\; u - \zeta_i v) \Mod{q},
@@ -236,7 +236,7 @@ where $\zeta_i$ denotes the corresponding twiddle factor. By using a fixed trans
 
 where $\odot$ denotes coefficient-wise multiplication in the NTT domain. Equation~\eqref{eq:pointwise-mul} replaces quadratic-time schoolbook multiplication with the standard NTT-based evaluation path.
 
-The second optimization direction is removal of division from the main arithmetic path. Modular reduction is organized around Barrett-style reciprocal multiplication,
+The second optimization direction is removal of division from the main arithmetic path. This choice addresses coefficient-level reduction costs that recur throughout NTT butterflies, pointwise multiplication, and decomposition. Modular reduction is organized around Barrett-style reciprocal multiplication,
 
 \begin{equation}
 \operatorname{red}_q(x) = x - \left\lfloor \frac{x\mu_q}{2^{\kappa}} \right\rfloor q,
@@ -247,7 +247,7 @@ The second optimization direction is removal of division from the main arithmeti
 
 which replaces hardware division with multiplication, bit shifting, and a final correction step. A related reciprocal-based procedure is used when the decomposition stage requires quotient extraction with respect to $2\gamma_2$. This choice is relevant because $\mathsf{Decompose}$, $\mathsf{HighBits}$, and $\mathsf{LowBits}$ are called repeatedly in both signing and verification.
 
-The third optimization direction is reuse of transformed state across iterations of the signing loop. For each counter value $\kappa$, only the fresh masking vector $\mathbf{y}$ and challenge polynomial $c$ are transformed online. The main per-iteration computations are
+The third optimization direction is reuse of transformed state across iterations of the signing loop. This choice addresses the runtime variability and repeated work introduced by rejection sampling: failed signing attempts should not force the implementation to re-transform long-lived key-dependent values. For each counter value $\kappa$, only the fresh masking vector $\mathbf{y}$ and challenge polynomial $c$ are transformed online. The main per-iteration computations are
 
 \begin{align}
 \mathbf{y} &= \mathsf{ExpandMask}(\rho'',\kappa), \\
@@ -294,7 +294,7 @@ Algorithm~\ref{alg:opt-sign} summarizes the optimized signing flow. The main imp
 }
 \end{algorithm}
 
-The fourth optimization direction is compact fixed-length serialization. For each parameter set, public keys, private keys, and signatures are encoded as contiguous byte strings with predetermined lengths. In particular,
+The fourth optimization direction is compact fixed-length serialization. This choice addresses MQTT buffer management and packet construction, where variable parsing overhead and dynamic allocation are undesirable on constrained endpoints. For each parameter set, public keys, private keys, and signatures are encoded as contiguous byte strings with predetermined lengths. In particular,
 
 \begin{align}
 |\sigma| &\in \{2420,\ 3309,\ 4627\}\ \text{bytes}, \\
@@ -306,7 +306,7 @@ for ML-DSA-44, ML-DSA-65, and ML-DSA-87, respectively. This property is useful f
 
 \subsection{MQTT-Oriented Signature Integration}
 
-MQTT does not define native fields for application-layer digital signatures, so signature transport is handled by payload encapsulation rather than protocol modification. Let $m$ denote the application payload and let $\sigma$ denote the encoded ML-DSA signature. A broker-compatible signed message can be represented as
+MQTT does not define native fields for application-layer digital signatures. A broker-aware extension could expose signatures as protocol elements, but it would require changes to deployed brokers and clients. Payload encapsulation is therefore used because it preserves MQTT topic routing, Quality of Service handling, and broker forwarding semantics while still binding each message to a public-key signature. Let $m$ denote the application payload and let $\sigma$ denote the encoded ML-DSA signature. A broker-compatible signed message can be represented as
 
 \begin{align}
 \mathcal{F} ={}& \mathsf{type} \parallel \mathsf{len}(m) \parallel m \parallel \mathsf{alg} \parallel \\
@@ -323,7 +323,7 @@ m^{\star} = m \parallel \mathsf{alg} \parallel \mathsf{kid} \parallel \mathsf{ts
 
 At the publisher, the endpoint computes $\sigma = \mathsf{Sign}(sk,m^{\star})$ and places the resulting byte string into the MQTT payload. At the subscriber, the same frame is parsed, freshness and key selection are checked, and verification is performed by evaluating $\mathsf{Verify}(pk,m^{\star},\sigma)$. Because the broker processes the payload as opaque data, the publish-subscribe semantics, topic handling, and broker forwarding logic remain unchanged.
 
-This integration design is intentionally MQTT-oriented rather than MQTT-modifying. The main protocol effect is therefore limited to payload expansion and endpoint-side cryptographic delay, which can be analyzed independently of any broker implementation changes.
+This integration design is intentionally MQTT-oriented rather than MQTT-modifying. Its advantage is deployability: existing brokers can be used unchanged, and subscribers that understand the frame can verify authenticity and freshness at the application layer. The resulting cost is explicit and measurable as payload expansion and endpoint-side cryptographic delay, which can be analyzed independently of any broker implementation changes.
 
 
 \section{Experimental Evaluation}\label{sec:evaluation}
@@ -492,6 +492,34 @@ End-to-end latency of 1.11--1.88 s exceeds sub-second bounds for interactive IoT
 \paragraph{Sustainable Throughput}
 
 Sustainable message rates range from 0.87 to 1.52 messages/s across ML-DSA parameter sets, compared with 104--109 messages/s for ECDSA. Signature generation is the primary performance bottleneck and causes a throughput reduction of 70--122$\times$ relative to the classical baseline.
+
+\subsubsection{Comparison with Alternative Deployment Paths}
+
+The measured results should be interpreted against other post-quantum migration strategies for IoT messaging. Direct numerical comparison across prior studies is difficult because existing work uses different microcontrollers, protocol stacks, security goals, and measurement methods. Therefore, Table~\ref{tab:deployment-comparison} compares the deployment role, advantage, and limitation of representative approaches rather than treating one method as universally superior.
+
+\begin{table*}[t]
+	\centering
+	\caption{Comparison of Post-Quantum Authentication Deployment Paths for IoT Messaging}
+	\label{tab:deployment-comparison}
+	\small
+	\begin{tabularx}{\textwidth}{p{0.20\textwidth}p{0.25\textwidth}p{0.27\textwidth}p{0.18\textwidth}}
+		\toprule
+		\textbf{Approach} & \textbf{Main Advantage} & \textbf{Main Limitation} & \textbf{Most Suitable Scenario} \\
+		\midrule
+		Embedded ML-DSA benchmarking and optimization~\cite{Benchmark2022,pqm4-benchmarks,Barrett2023} & Provides low-level arithmetic cost and guides implementation tuning on constrained processors. & Does not directly show how multi-kilobyte signatures affect MQTT packet expansion, broker-mediated delivery, or end-to-end latency. & Selecting and optimizing a cryptographic library for a fixed microcontroller. \\
+		\midrule
+		Protocol adaptation for MQTT-family or lightweight IoT protocols~\cite{BlancoRomero2024} & Can expose security metadata more explicitly and optimize protocol behavior for post-quantum payloads. & Requires protocol-stack or gateway changes, which may reduce compatibility with deployed MQTT brokers and clients. & Greenfield deployments where the communication stack can be modified. \\
+		\midrule
+		KEM-oriented MQTT security~\cite{Kim2025} & Can be more suitable for highly constrained nodes when the goal is session-key establishment followed by efficient symmetric authentication. & Does not provide per-message public verifiability and non-repudiation in the same way as a digital signature. & Telemetry systems that prioritize confidentiality or shared-key authentication over auditability. \\
+		\midrule
+		Broker-compatible ML-DSA payload framing in this work & Preserves standardized ML-DSA signatures, public verifiability, and compatibility with unmodified MQTT brokers. & Incurs high signing latency and large message expansion, making mitigation necessary for high-rate or real-time traffic. & Low-rate or audit-sensitive MQTT deployments that require broker compatibility. \\
+		\midrule
+		Hardware-assisted or vectorized ML-DSA implementations~\cite{Wei2025,Norga2025} & Can substantially reduce the arithmetic bottleneck when suitable acceleration is available. & Requires hardware support not present in many deployed Cortex-M4 nodes and does not remove signature-size overhead. & New gateways or higher-end endpoints with cryptographic acceleration support. \\
+		\bottomrule
+	\end{tabularx}
+\end{table*}
+
+This comparison clarifies the value and boundary of the present design. KEM-based or hybrid approaches may be preferable when public verifiability is not required and the main goal is efficient secure communication. Protocol-adapted designs may be preferable when the broker or gateway can be changed. Hardware-assisted implementations may be preferable for new platforms with acceleration support. The contribution of this work is therefore the characterization of a conservative migration path: standardized ML-DSA signatures are retained, MQTT brokers remain unchanged, and the resulting endpoint and protocol overhead is measured directly.
 
 \subsubsection{Trade-off Analysis}
 
