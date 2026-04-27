@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "creating-figures": {
+      "source": "isomoes/skills",
+      "sourceType": "github",
+      "computedHash": "e61e43306cc59ea11831b304def6b9cef35c467d5df5fa8fd7b675f0fe273986"
+    },
     "ieee-journal-writing": {
       "source": "isomoes/skills",
       "sourceType": "github",
