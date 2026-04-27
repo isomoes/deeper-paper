@@ -31,16 +31,6 @@
 \usepackage{empheq}
 \usepackage{threeparttable}
 
-%%%% TIKZ PACKAGES FOR FIGURES %%%%
-\usepackage{tikz}
-\usetikzlibrary{positioning}
-\usetikzlibrary{shapes.geometric}
-\usetikzlibrary{arrows.meta}
-\usetikzlibrary{fit}
-\usetikzlibrary{backgrounds}
-\usetikzlibrary{calc}
-\usetikzlibrary{decorations.pathreplacing}
-
 %%%% COLOR PACKAGE FOR HIGHLIGHTING %%%%
 \usepackage{xcolor}
 \usepackage[normalem]{ulem}
@@ -182,6 +172,15 @@ These two background elements define the main evaluation dimensions of this pape
 
 This section describes the implementation method used to realize the first two contributions stated in Section~I. The emphasis is placed on the algorithmic structure of the ML-DSA software, the implementation choices used to reduce the cost of the dominant arithmetic kernels, and the application-layer framing by which the resulting signatures can be carried in MQTT communication.
 
+Fig.~\ref{fig:mqtt-mldsa-architecture} summarizes the resulting deployment architecture. The cryptographic optimization is confined to endpoint software on the constrained publisher and subscriber, whereas the MQTT broker forwards the signed payload as opaque application data.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{mqtt-mldsa-architecture}
+\caption{Optimized ML-DSA integration in an MQTT publish-subscribe workflow. Cached NTT-domain state reduces endpoint signing cost, while the broker remains unchanged because signatures are carried inside the MQTT payload.}
+\label{fig:mqtt-mldsa-architecture}
+\end{figure}
+
 \subsection{Algorithmic Overview}
 
 For a parameter set with matrix dimensions $(k,\ell)$, the implementation follows the standard ML-DSA flow of key generation, signing, and verification over the ring $R_q = \mathbb{Z}_q[X]/(X^{256}+1)$. From an initial seed $\xi$, the internal seeds $(\rho,\rho',K)$ are derived and used to generate the public matrix $\mathbf{A}$ and the short secret vectors $\mathbf{s}_1$ and $\mathbf{s}_2$. In transform notation, the key-generation stage is summarized as
@@ -211,6 +210,15 @@ available for reuse across signature generation and verification. This choice is
 \subsection{Implementation-Level Optimization}
 
 The implementation-level optimization is applied without changing the ML-DSA algorithm or parameter sets. As discussed in Section~\ref{sec:complexity}, the dominant cost arises from repeated transforms, modular multiplication, coefficient decomposition, and the rejection-sampling loop in signing. The optimization therefore targets these paths directly while preserving the standardized procedure in FIPS 204~\cite{NIST-FIPS-204}.
+
+Fig.~\ref{fig:mldsa-implementation-optimization} summarizes the implementation structure. Precomputed schedules, reciprocal constants, and NTT-domain key state are separated from the online signing attempt, so the rejection loop transforms only fresh ephemeral values.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{mldsa-implementation-optimization}
+\caption{Implementation-level optimization structure for ML-DSA signing. Fixed NTT scheduling, reciprocal reductions, and cached NTT-domain state reduce repeated work in the online rejection-sampling loop without changing the standardized algorithm.}
+\label{fig:mldsa-implementation-optimization}
+\end{figure}
 
 The first optimization direction is specialization of the Number Theoretic Transform (NTT) path. Since the polynomial degree is fixed at $n=256$, the transform always consists of eight radix-2 butterfly layers. The basic butterfly update can be written as
 

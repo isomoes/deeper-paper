@@ -1,0 +1,49 @@
+\documentclass[tikz,border=1.5mm]{standalone}
+
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+
+\definecolor{figdark}{gray}{0.25}
+\definecolor{figmid}{gray}{0.55}
+\definecolor{figlight}{gray}{0.91}
+\definecolor{figstate}{gray}{0.78}
+
+\begin{document}
+\begin{tikzpicture}[
+    font=\scriptsize\sffamily,
+    node distance=3.5mm and 6mm,
+    prep/.style={rectangle, draw=figmid, fill=figstate, rounded corners=1.5pt,
+        align=center, minimum width=24mm, minimum height=6.5mm, inner sep=2pt},
+    stage/.style={rectangle, draw=figmid, fill=figlight, rounded corners=1.5pt,
+        align=center, minimum width=24mm, minimum height=7mm, inner sep=2pt},
+    result/.style={rectangle, draw=figdark, fill=white, rounded corners=1pt,
+        align=center, minimum width=23mm, minimum height=7mm, inner sep=2pt},
+    group/.style={draw=figmid, dashed, rounded corners=2pt, inner sep=4pt},
+    arrow/.style={-{Stealth[length=2mm]}, draw=figdark, line width=0.45pt},
+    feed/.style={-{Stealth[length=1.8mm]}, draw=figmid, line width=0.4pt},
+    retry/.style={-{Stealth[length=1.8mm]}, draw=figmid, dashed, line width=0.4pt},
+    note/.style={font=\tiny\sffamily, align=center, text=figmid}
+]
+    \node[prep] (ntt) {fixed NTT schedule\\8 layers, twiddles};
+    \node[prep, below=of ntt] (red) {reciprocal reductions\\Barrett, no division};
+    \node[prep, below=of red] (cache) {cached NTT state\\$\hat{\mathbf{A}},\hat{\mathbf{s}}_1,\hat{\mathbf{s}}_2,\hat{\mathbf{t}}_0$};
+
+    \node[stage, right=10mm of red] (fresh) {signing attempt $\kappa$\\fresh $\mathbf{y},c$ only};
+    \node[stage, right=of fresh] (mul) {NTT-domain products\\$\hat{\mathbf{A}}\hat{\mathbf{y}}$, $\hat{c}\hat{\mathbf{s}}_i$, $\hat{c}\hat{\mathbf{t}}_0$};
+    \node[stage, below=of mul] (checks) {InvNTT, High/LowBits\\norm and hint tests};
+    \node[result, left=of checks] (sig) {fixed-length\\signature $\sigma$};
+
+    \begin{scope}[on background layer]
+        \node[group, fit=(ntt)(red)(cache), label={[font=\tiny\sffamily]above:precomputed implementation state}] (precomp) {};
+        \node[group, fit=(fresh)(mul)(checks)(sig), label={[font=\tiny\sffamily]above:online signing path}] (online) {};
+    \end{scope}
+
+    \draw[feed] (precomp.east) -- node[above, note] {reuse} (fresh.west);
+    \draw[arrow] (fresh) -- (mul);
+    \draw[arrow] (mul) -- (checks);
+    \draw[arrow] (checks.west) -- node[above, note] {accept} (sig.east);
+    \draw[retry] (checks.south) -- ++(0,-6mm) coordinate (retrybase)
+        -- node[below, note] {reject: $\kappa\leftarrow\kappa+\ell$} ([xshift=-5mm]sig.west |- retrybase)
+        -- ([xshift=-5mm]fresh.south west) -- (fresh.south west);
+\end{tikzpicture}
+\end{document}
